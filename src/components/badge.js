@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { sColor, sBg } from '../theme';
+import { sColor, sBg } from '../themes/colors';
 
 // ── Subject Badge ─────────────────────────
 

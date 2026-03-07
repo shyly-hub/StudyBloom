@@ -7,7 +7,7 @@ import React from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
-import { C } from '../theme';
+import { C } from '../themes/colors';
 
 // ── Page Header ───────────────────────────
 // Screen title at the top of every screen

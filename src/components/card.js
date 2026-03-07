@@ -5,7 +5,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C } from '../theme';
+import { C } from '../themes/colors';
 
 // ── Standard Card ─────────────────────────
 

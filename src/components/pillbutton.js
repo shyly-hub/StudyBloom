@@ -9,7 +9,7 @@ import {
   StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { C } from '../theme';
+import { C } from '../themes/colors';
 
 // ── Primary Button ────────────────────────
 // Main CTA button with gradient + shadow
