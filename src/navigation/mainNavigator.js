@@ -12,9 +12,10 @@ import AnalyticsScreen from '../screens/analytics/AnalyticsScreen';
 import HistoryScreen   from '../screens/analytics/HistoryScreen';
 import WeeklyReportScreen from '../screens/analytics/WeeklyReportScreen';
 import SettingsScreen     from '../screens/analytics/SettingsScreen';
-// import FocusScreen        from '../screens/study/FocusScreen';
-// import DistractionScreen  from '../screens/study/DistractionScreen';
-// import PostSessionLog     from '../screens/study/PostSessionLog';
+
+import FocusScreen        from '../screens/study/FocusScreen';
+import DistractionScreen  from '../screens/study/DistractionScreen';
+import PostSessionLog     from '../screens/study/PostSessionLog';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -148,16 +149,17 @@ export default function MainNavigator({ user, onLogout }) {
       </Stack.Screen>
 
       {/* Quit reason modal — uncomment when B Rom adds FocusScreen */}
-      {/* <Stack.Screen
+      <Stack.Screen
         name="QuitReason"
         component={QuitReasonScreen}
         options={{ animation: 'slide_from_bottom', presentation: 'transparentModal' }}
-      /> */}
+      />
+      
 
       {/* These unlock when B Rom finishes study screens */}
-      {/* <Stack.Screen name="Focus"       component={FocusScreen}       options={{ animation: 'fade', presentation: 'fullScreenModal' }} /> */}
-      {/* <Stack.Screen name="Distraction" component={DistractionScreen} options={{ animation: 'slide_from_bottom', presentation: 'transparentModal' }} /> */}
-      {/* <Stack.Screen name="PostSession" component={PostSessionLog}    options={{ animation: 'fade' }} /> */}
+      <Stack.Screen name="Focus"       component={FocusScreen}       options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="Distraction" component={DistractionScreen} options={{ animation: 'slide_from_bottom', presentation: 'transparentModal' }} />
+      <Stack.Screen name="PostSession" component={PostSessionLog}    options={{ animation: 'fade' }} /> 
 
     </Stack.Navigator>
   );

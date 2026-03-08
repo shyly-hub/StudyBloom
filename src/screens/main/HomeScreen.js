@@ -78,7 +78,7 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.btnWrap}>
         <PrimaryButton
           label="START FOCUS"
-          onPress={() => Alert.alert('Coming Soon', 'B Rom is building the Focus screen!')}
+          onPress={() => navigation.navigate('Focus')} 
           colors={[C.blue, C.blueDark]}
         />
         <Text style={styles.btnSub}>Begin a study session</Text>
