@@ -9,9 +9,9 @@ import { QUIT_REASONS } from '../themes/constants';
 import HomeScreen      from '../screens/main/HomeScreen';
 import ProfileScreen   from '../screens/main/ProfileScreen';
 import AnalyticsScreen from '../screens/analytics/AnalyticsScreen';
-// import HistoryScreen      from '../screens/analytics/HistoryScreen';
-// import WeeklyReportScreen from '../screens/analytics/WeeklyReportScreen';
-// import SettingsScreen     from '../screens/analytics/SettingsScreen';
+import HistoryScreen   from '../screens/analytics/HistoryScreen';
+import WeeklyReportScreen from '../screens/analytics/WeeklyReportScreen';
+import SettingsScreen     from '../screens/analytics/SettingsScreen';
 // import FocusScreen        from '../screens/study/FocusScreen';
 // import DistractionScreen  from '../screens/study/DistractionScreen';
 // import PostSessionLog     from '../screens/study/PostSessionLog';
@@ -61,11 +61,9 @@ function BottomTabs({ user }) {
       </Tab.Screen>
 
       <Tab.Screen name="Analytics" component={AnalyticsScreen} />
-
-      {/* uncomment when Mey adds these files: */}
-      {/* <Tab.Screen name="History"  component={HistoryScreen} /> */}
-      {/* <Tab.Screen name="Report"   component={WeeklyReportScreen} /> */}
-      {/* <Tab.Screen name="Settings" component={SettingsScreen} /> */}
+      <Tab.Screen name="History" component={HistoryScreen} />
+      <Tab.Screen name="Report"   component={WeeklyReportScreen} />
+      <Tab.Screen name="Settings" component={SettingsScreen} />
 
     </Tab.Navigator>
   );
