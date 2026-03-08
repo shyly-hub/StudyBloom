@@ -1,20 +1,16 @@
 
-
 import React from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { C } from '../themes/colors';
 
 // ── Standard Card ─────────────────────────
-
 export function Card({ children, style = {}, onPress }) {
   return (
     <TouchableOpacity
       activeOpacity={onPress ? 0.72 : 1}
       onPress={onPress}
-      style={[styles.card, style]}
+      style={[s.card, style]}
     >
       {children}
     </TouchableOpacity>
@@ -22,10 +18,10 @@ export function Card({ children, style = {}, onPress }) {
 }
 
 // ── Gradient Card ─────────────────────────
-
+// Default: volt deep → volt (instead of old blue → blueDark)
 export function GradientCard({
   children,
-  colors  = [C.blue, C.blueDark],
+  colors  = [C.blueDark, C.blue],
   style   = {},
   onPress,
 }) {
@@ -33,13 +29,13 @@ export function GradientCard({
     <TouchableOpacity
       activeOpacity={onPress ? 0.85 : 1}
       onPress={onPress}
-      style={[styles.gradientCardWrapper, style]}
+      style={[s.gradientWrapper, style]}
     >
       <LinearGradient
         colors={colors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.gradientCard}
+        style={s.gradientInner}
       >
         {children}
       </LinearGradient>
@@ -48,7 +44,7 @@ export function GradientCard({
 }
 
 // ── Stat Card ─────────────────────────────
-
+// Neon top-bar with glow shadow in accent color
 export function StatCard({
   value,
   label,
@@ -61,24 +57,27 @@ export function StatCard({
     <TouchableOpacity
       activeOpacity={onPress ? 0.75 : 1}
       onPress={onPress}
-      style={[styles.statCard, style]}
+      style={[s.statCard, style]}
     >
-      {/* Colored top bar accent */}
-      <View style={[styles.statAccent, { backgroundColor: color }]} />
-
-      <View style={styles.statContent}>
-        <Text style={[styles.statValue, { color }]}>{value}</Text>
-        <Text style={styles.statLabel}>{label}</Text>
-        {sublabel && (
-          <Text style={styles.statSublabel}>{sublabel}</Text>
-        )}
+      {/* Neon accent bar — glows in accent color */}
+      <View style={[s.statAccent, {
+        backgroundColor: color,
+        shadowColor:     color,
+        shadowOffset:    { width: 0, height: 0 },
+        shadowOpacity:   0.7,
+        shadowRadius:    8,
+      }]} />
+      <View style={s.statContent}>
+        <Text style={[s.statValue, { color }]}>{value}</Text>
+        <Text style={s.statLabel}>{label}</Text>
+        {sublabel && <Text style={s.statSublabel}>{sublabel}</Text>}
       </View>
     </TouchableOpacity>
   );
 }
 
 // ── List Card ─────────────────────────────
-
+// Left accent bar glows in accent color
 export function ListCard({
   children,
   accentColor = C.blue,
@@ -89,81 +88,79 @@ export function ListCard({
     <TouchableOpacity
       activeOpacity={onPress ? 0.75 : 1}
       onPress={onPress}
-      style={[styles.listCard, style]}
+      style={[s.listCard, style]}
     >
-      {/* Left accent bar */}
-      <View style={[styles.listAccent, { backgroundColor: accentColor }]} />
-      <View style={styles.listContent}>
-        {children}
-      </View>
+      <View style={[s.listAccent, {
+        backgroundColor: accentColor,
+        shadowColor:     accentColor,
+        shadowOffset:    { width: 0, height: 0 },
+        shadowOpacity:   0.6,
+        shadowRadius:    6,
+      }]} />
+      <View style={s.listContent}>{children}</View>
     </TouchableOpacity>
   );
 }
 
 // ── Info Row ──────────────────────────────
-
 export function InfoRow({ label, value, valueColor = C.text }) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={[styles.infoValue, { color: valueColor }]}>{value}</Text>
+    <View style={s.infoRow}>
+      <Text style={s.infoLabel}>{label}</Text>
+      <Text style={[s.infoValue, { color: valueColor }]}>{value}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
 
-  // ── Card ──────────────────────────────
+  // ── Standard Card ─────────────────────
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius:    16,
+    backgroundColor: C.card,        // void surface
+    borderRadius:    18,
     padding:         16,
     marginBottom:    12,
-
-    // Layered shadow for depth
-    shadowColor:   '#1e3a5f',
-    shadowOffset:  { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius:  12,
-    elevation:     3,
-
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderWidth:     0.5,
+    borderColor:     C.border,
+    // Violet glow shadow
+    shadowColor:     C.shadow,
+    shadowOffset:    { width: 0, height: 4 },
+    shadowOpacity:   1,
+    shadowRadius:    16,
+    elevation:       4,
   },
 
   // ── Gradient Card ─────────────────────
-  gradientCardWrapper: {
-    borderRadius: 20,
-    marginBottom: 12,
-    shadowColor:  '#6366f1',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius:  16,
-    elevation:    6,
+  gradientWrapper: {
+    borderRadius:  20,
+    marginBottom:  12,
+    shadowColor:   C.shadow,
+    shadowOffset:  { width: 0, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius:  20,
+    elevation:     8,
   },
-  gradientCard: {
+  gradientInner: {
     borderRadius: 20,
     padding:      20,
   },
 
   // ── Stat Card ─────────────────────────
   statCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: C.card,
     borderRadius:    16,
     overflow:        'hidden',
     marginBottom:    12,
-
-    shadowColor:   '#1e3a5f',
-    shadowOffset:  { width: 0, height: 2 },
-    shadowOpacity: 0.07,
-    shadowRadius:  10,
-    elevation:     2,
-
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderWidth:     0.5,
+    borderColor:     C.border,
+    shadowColor:     C.shadow,
+    shadowOffset:    { width: 0, height: 4 },
+    shadowOpacity:   1,
+    shadowRadius:    12,
+    elevation:       3,
   },
   statAccent: {
-    height: 4,
+    height: 3,       // thinner, sharper neon line
     width:  '100%',
   },
   statContent: {
@@ -176,37 +173,35 @@ const styles = StyleSheet.create({
     marginBottom:  2,
   },
   statLabel: {
-    fontSize:   12,
-    color:      '#64748b',
-    fontWeight: '600',
-    letterSpacing: 0.3,
+    fontSize:      11,
+    color:         C.muted,
+    fontWeight:    '600',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   statSublabel: {
-    fontSize:   11,
-    color:      '#94a3b8',
-    marginTop:  2,
+    fontSize:  11,
+    color:     C.subtext,
+    marginTop: 2,
   },
 
   // ── List Card ─────────────────────────
   listCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: C.card,
     borderRadius:    14,
     marginBottom:    10,
     flexDirection:   'row',
     overflow:        'hidden',
-
-    shadowColor:   '#1e3a5f',
-    shadowOffset:  { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius:  8,
-    elevation:     2,
-
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderWidth:     0.5,
+    borderColor:     C.border,
+    shadowColor:     C.shadow,
+    shadowOffset:    { width: 0, height: 2 },
+    shadowOpacity:   1,
+    shadowRadius:    8,
+    elevation:       2,
   },
   listAccent: {
-    width:        4,
-    borderRadius: 0,
+    width: 3,    // thin neon stripe
   },
   listContent: {
     flex:    1,
@@ -215,16 +210,16 @@ const styles = StyleSheet.create({
 
   // ── Info Row ──────────────────────────
   infoRow: {
-    flexDirection:  'row',
-    justifyContent: 'space-between',
-    alignItems:     'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8fafc',
+    flexDirection:     'row',
+    justifyContent:    'space-between',
+    alignItems:        'center',
+    paddingVertical:   8,
+    borderBottomWidth: 0.5,
+    borderBottomColor: C.border,
   },
   infoLabel: {
-    fontSize:   13,
-    color:      '#94a3b8',
+    fontSize:   12,
+    color:      C.muted,
     fontWeight: '500',
   },
   infoValue: {

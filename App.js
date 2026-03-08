@@ -1,41 +1,46 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
+import { View, ActivityIndicator } from 'react-native';
 
-import { SessionProvider } from './src/context/sessionContext';
-import AuthProvider from './src/hooks/useAuth';
+import AuthProvider, { useAuth } from './src/hooks/useAuth';
+import { SessionProvider }       from './src/context/sessionContext';
+import AuthNavigator             from './src/navigation/authNavigator';
+import MainNavigator             from './src/navigation/mainNavigator';
 
-import AuthNavigator from './src/navigation/authNavigator';
-import MainNavigator from './src/navigation/mainNavigator';
-
-const Stack = createNativeStackNavigator();
-
+// ── Inner app — reads auth state ──────────
 function RootNavigator() {
+  const { user, userData, loading } = useAuth();
+
+  // Show spinner while Firebase checks login state
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f4ff' }}>
+        <ActivityIndicator size="large" color="#6c8ef5" />
+      </View>
+    );
+  }
+
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-
-        {/* LOGIN / REGISTER FIRST */}
-        <Stack.Screen name="Auth" component={AuthNavigator} />
-
-        {/* AFTER LOGIN */}
-        <Stack.Screen name="Main" component={MainNavigator} />
-
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SessionProvider userId={user?.uid} initialScore={userData?.score || 50}>
+      <NavigationContainer>
+        {user
+          ? <MainNavigator user={user} userData={userData} />
+          : <AuthNavigator />
+        }
+      </NavigationContainer>
+    </SessionProvider>
   );
 }
 
+// ── Root — wraps everything in AuthProvider ─
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      <StatusBar style="auto" />
       <AuthProvider>
-        <SessionProvider>
-          <RootNavigator />
-        </SessionProvider>
+        <RootNavigator />
       </AuthProvider>
     </SafeAreaProvider>
   );

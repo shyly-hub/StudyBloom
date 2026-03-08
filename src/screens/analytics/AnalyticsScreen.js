@@ -7,8 +7,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, SUBJECTS, sColor, sBg } from '../../themes';
 import { Card } from '../../components';
-import { useSessions } from '../../hooks/useSessions';
-import { SAMPLE_SESSIONS } from '../../data/sampleData';
+import { useSession } from '../../context/sessionContext';
 
 const WEEK_FILTERS = ['This Week', 'Last Week', 'This Month'];
 
@@ -111,13 +110,7 @@ function BarChart({ data }) {
 export default function AnalyticsScreen() {
   const [weekFilter, setWeekFilter] = useState('This Week');
 
-  let sessions        = SAMPLE_SESSIONS;
-  let disciplineScore = 72;
-  try {
-    const ctx = useSessions();
-    if (ctx?.sessions)        sessions        = ctx.sessions;
-    if (ctx?.disciplineScore) disciplineScore = ctx.disciplineScore;
-  } catch (e) {}
+const { sessions, disciplineScore } = useSession();
 
   const totalMins  = sessions.reduce((a, s) => a + (s.duration || 0), 0);
   const completed  = sessions.filter(s => s.completed).length;

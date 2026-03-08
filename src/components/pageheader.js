@@ -1,16 +1,10 @@
 
-//  Usage:
-//  import { PageHeader, SectionTitle, ProgressBar } from '../components'
-// ══════════════════════════════════════════
-
 import React from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { C } from '../themes/colors';
 
 // ── Page Header ───────────────────────────
-// Screen title at the top of every screen
+// Screen top — sub label in volt caps, large bold title
 //
 // Usage:
 // <PageHeader title="Analytics" />
@@ -18,20 +12,20 @@ import { C } from '../themes/colors';
 // <PageHeader title="Settings" onBack={() => navigation.goBack()} />
 export function PageHeader({ title, sub, onBack, right, style = {} }) {
   return (
-    <View style={[styles.header, style]}>
-      <View style={styles.headerLeft}>
+    <View style={[s.header, style]}>
+      <View style={s.headerLeft}>
         {onBack && (
           <TouchableOpacity
             onPress={onBack}
             activeOpacity={0.75}
-            style={styles.backBtn}
+            style={s.backBtn}
           >
-            <Text style={styles.backArrow}>←</Text>
+            <Text style={s.backArrow}>←</Text>
           </TouchableOpacity>
         )}
         <View style={{ flex: 1 }}>
-          {sub && <Text style={styles.headerSub}>{sub}</Text>}
-          <Text style={styles.headerTitle}>{title}</Text>
+          {sub && <Text style={s.headerSub}>{sub}</Text>}
+          <Text style={s.headerTitle}>{title}</Text>
         </View>
       </View>
       {right && <View>{right}</View>}
@@ -40,18 +34,21 @@ export function PageHeader({ title, sub, onBack, right, style = {} }) {
 }
 
 // ── Section Title ─────────────────────────
-// Bold header for sections inside a screen
+// Volt accent bar + dark section heading
 //
 // Usage:
 // <SectionTitle>Recent Sessions</SectionTitle>
 // <SectionTitle action="See all" onAction={() => {}}>Sessions</SectionTitle>
 export function SectionTitle({ children, action, onAction, style = {} }) {
   return (
-    <View style={[styles.sectionRow, style]}>
-      <Text style={styles.sectionTitle}>{children}</Text>
+    <View style={[s.sectionRow, style]}>
+      <View style={s.sectionLeft}>
+        <View style={s.sectionAccentBar} />
+        <Text style={s.sectionTitle}>{children}</Text>
+      </View>
       {action && (
         <TouchableOpacity onPress={onAction} activeOpacity={0.7}>
-          <Text style={styles.sectionAction}>{action}</Text>
+          <Text style={s.sectionAction}>{action}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -59,15 +56,15 @@ export function SectionTitle({ children, action, onAction, style = {} }) {
 }
 
 // ── Progress Bar ──────────────────────────
-// Clean horizontal fill bar with label
+// Dark track + glow fill bar
 //
 // Usage:
 // <ProgressBar value={72} />
-// <ProgressBar value={45} color={C.mint} label="Focus Stability" showValue />
+// <ProgressBar value={45} color={C.mint} label="Stability" showValue />
 export function ProgressBar({
-  value      = 0,          // 0 to 100
+  value      = 0,
   color      = C.blue,
-  height     = 8,
+  height     = 6,
   label      = null,
   showValue  = false,
   style      = {},
@@ -77,56 +74,52 @@ export function ProgressBar({
   return (
     <View style={[{ width: '100%' }, style]}>
       {(label || showValue) && (
-        <View style={styles.barLabelRow}>
-          {label && <Text style={styles.barLabel}>{label}</Text>}
-          {showValue && (
-            <Text style={[styles.barValue, { color }]}>{clamped}%</Text>
-          )}
+        <View style={s.barLabelRow}>
+          {label    && <Text style={s.barLabel}>{label}</Text>}
+          {showValue && <Text style={[s.barValue, { color }]}>{clamped}%</Text>}
         </View>
       )}
-      <View style={[styles.barTrack, { height, borderRadius: height / 2 }]}>
-        <View style={[
-          styles.barFill,
-          {
-            width:        `${clamped}%`,
-            height,
-            borderRadius: height / 2,
-            backgroundColor: color,
-          }
-        ]} />
+      <View style={[s.barTrack, { height, borderRadius: height / 2 }]}>
+        <View style={[s.barFill, {
+          width:           `${clamped}%`,
+          height,
+          borderRadius:    height / 2,
+          backgroundColor: color,
+          // Glow on the fill
+          shadowColor:     color,
+          shadowOffset:    { width: 0, height: 0 },
+          shadowOpacity:   0.5,
+          shadowRadius:    5,
+        }]} />
       </View>
     </View>
   );
 }
 
 // ── Divider ───────────────────────────────
-// Thin line to separate sections
 // Usage: <Divider />
-//        <Divider style={{ marginVertical: 16 }} />
 export function Divider({ style = {} }) {
-  return <View style={[styles.divider, style]} />;
+  return <View style={[s.divider, style]} />;
 }
 
 // ── Empty State ───────────────────────────
-// Shown when a list has no items
-//
-// Usage:
-// <EmptyState title="No sessions yet" sub="Complete a focus session to see it here" />
+// Dark ghost illustration placeholder
+// Usage: <EmptyState title="No sessions yet" sub="Complete a focus session to see it here" />
 export function EmptyState({ title, sub, style = {} }) {
   return (
-    <View style={[styles.empty, style]}>
-      <View style={styles.emptyIcon}>
-        <View style={styles.emptyCircle} />
-        <View style={styles.emptyLine} />
-        <View style={[styles.emptyLine, { width: 40 }]} />
+    <View style={[s.empty, style]}>
+      <View style={s.emptyIcon}>
+        <View style={s.emptyCircle} />
+        <View style={s.emptyLine} />
+        <View style={[s.emptyLine, { width: 40 }]} />
       </View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      {sub && <Text style={styles.emptySub}>{sub}</Text>}
+      <Text style={s.emptyTitle}>{title}</Text>
+      {sub && <Text style={s.emptySub}>{sub}</Text>}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
 
   // ── Page Header ───────────────────────
   header: {
@@ -146,28 +139,31 @@ const styles = StyleSheet.create({
     width:           38,
     height:          38,
     borderRadius:    19,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: C.bgRaised,
     alignItems:      'center',
     justifyContent:  'center',
+    borderWidth:     0.5,
+    borderColor:     C.border,
   },
   backArrow: {
     fontSize:   18,
-    color:      '#1e293b',
+    color:      C.text,
     fontWeight: '600',
   },
+  // Volt caps sub-label above title
   headerSub: {
-    fontSize:      12,
-    color:         '#94a3b8',
-    fontWeight:    '500',
-    letterSpacing: 0.5,
+    fontSize:      9,
+    color:         C.blue,           // electric violet
+    fontWeight:    '800',
+    letterSpacing: 3,
     textTransform: 'uppercase',
-    marginBottom:  2,
+    marginBottom:  4,
   },
   headerTitle: {
-    fontSize:      22,
+    fontSize:      28,
     fontWeight:    '800',
-    color:         '#0f172a',
-    letterSpacing: -0.3,
+    color:         C.text,           // warm off-white
+    letterSpacing: -0.8,
   },
 
   // ── Section Title ─────────────────────
@@ -177,15 +173,32 @@ const styles = StyleSheet.create({
     alignItems:     'center',
     marginBottom:   14,
   },
+  sectionLeft: {
+    flexDirection: 'row',
+    alignItems:    'center',
+    gap:           10,
+  },
+  // 3px neon volt accent bar
+  sectionAccentBar: {
+    width:           3,
+    height:          14,
+    borderRadius:    2,
+    backgroundColor: C.blue,
+    shadowColor:     C.blue,
+    shadowOffset:    { width: 0, height: 0 },
+    shadowOpacity:   0.6,
+    shadowRadius:    4,
+  },
   sectionTitle: {
-    fontSize:   16,
+    fontSize:   14,
     fontWeight: '700',
-    color:      '#0f172a',
+    color:      C.text,
   },
   sectionAction: {
-    fontSize:   13,
-    color:      C.blue,
-    fontWeight: '600',
+    fontSize:      12,
+    color:         C.blue,
+    fontWeight:    '600',
+    letterSpacing: 0.3,
   },
 
   // ── Progress Bar ──────────────────────
@@ -195,33 +208,37 @@ const styles = StyleSheet.create({
     marginBottom:   6,
   },
   barLabel: {
-    fontSize:   12,
-    color:      '#64748b',
-    fontWeight: '600',
+    fontSize:      11,
+    color:         C.muted,
+    fontWeight:    '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   barValue: {
-    fontSize:   12,
+    fontSize:   11,
     fontWeight: '700',
   },
   barTrack: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: C.bgHover,     // dark track
     overflow:        'hidden',
+    borderWidth:     0.5,
+    borderColor:     C.border,
   },
   barFill: {
-    // width and height set inline
+    // inline width, height, color, glow shadow
   },
 
   // ── Divider ───────────────────────────
   divider: {
-    height:          1,
-    backgroundColor: '#f1f5f9',
+    height:          0.5,            // hairline
+    backgroundColor: C.border,
     marginVertical:  12,
   },
 
   // ── Empty State ───────────────────────
   empty: {
-    alignItems:   'center',
-    paddingVertical: 48,
+    alignItems:        'center',
+    paddingVertical:   48,
     paddingHorizontal: 32,
   },
   emptyIcon: {
@@ -230,30 +247,30 @@ const styles = StyleSheet.create({
     gap:          8,
   },
   emptyCircle: {
-    width:           52,
-    height:          52,
-    borderRadius:    26,
-    backgroundColor: '#f1f5f9',
-    borderWidth:     2,
-    borderColor:     '#e2e8f0',
+    width:        52,
+    height:       52,
+    borderRadius: 26,
+    backgroundColor: C.bgRaised,
+    borderWidth:  1,
+    borderColor:  C.border,
   },
   emptyLine: {
     width:           64,
     height:          8,
     borderRadius:    4,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: C.bgRaised,
   },
   emptyTitle: {
-    fontSize:   16,
+    fontSize:   15,
     fontWeight: '700',
-    color:      '#334155',
+    color:      C.text,
     marginBottom: 6,
     textAlign:  'center',
   },
   emptySub: {
-    fontSize:  13,
-    color:     '#94a3b8',
-    textAlign: 'center',
-    lineHeight: 20,
+    fontSize:   12,
+    color:      C.muted,
+    textAlign:  'center',
+    lineHeight: 18,
   },
 });

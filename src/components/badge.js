@@ -1,23 +1,33 @@
 
+
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { sColor, sBg } from '../themes/colors';
+import { C } from '../themes/colors';
+import { sColor, sBg } from '../themes/constants';
 
 // ── Subject Badge ─────────────────────────
-
+// Neon subject dot + dark translucent bg
+// Usage: <Badge subject="Math" />
+//        <Badge subject="Science" size="sm" />
 export function Badge({ subject, size = 'md' }) {
   const isSmall = size === 'sm';
   return (
     <View style={[
-      styles.badge,
-      { backgroundColor: sBg(subject) },
-      isSmall && styles.badgeSm,
+      s.badge,
+      { backgroundColor: sBg(subject), borderColor: sColor(subject) + '40' },
+      isSmall && s.badgeSm,
     ]}>
-      <View style={[styles.dot, { backgroundColor: sColor(subject) }]} />
+      <View style={[s.dot, {
+        backgroundColor: sColor(subject),
+        shadowColor:     sColor(subject),
+        shadowOffset:    { width: 0, height: 0 },
+        shadowOpacity:   0.8,
+        shadowRadius:    4,
+      }]} />
       <Text style={[
-        styles.badgeText,
+        s.badgeText,
         { color: sColor(subject) },
-        isSmall && styles.badgeTextSm,
+        isSmall && s.badgeTextSm,
       ]}>
         {subject}
       </Text>
@@ -26,21 +36,21 @@ export function Badge({ subject, size = 'md' }) {
 }
 
 // ── Status Badge ──────────────────────────
-
+// Completed = mint glow, Quit = ember glow
+// Usage: <StatusBadge completed={session.completed} />
 export function StatusBadge({ completed }) {
+  const color = completed ? C.green : C.red;
+  const bg    = completed ? C.greenSoft : C.redSoft;
   return (
-    <View style={[
-      styles.status,
-      { backgroundColor: completed ? '#dcfce7' : '#fee2e2' }
-    ]}>
-      <View style={[
-        styles.statusDot,
-        { backgroundColor: completed ? '#16a34a' : '#dc2626' }
-      ]} />
-      <Text style={[
-        styles.statusText,
-        { color: completed ? '#15803d' : '#dc2626' }
-      ]}>
+    <View style={[s.status, { backgroundColor: bg, borderColor: color + '40' }]}>
+      <View style={[s.statusDot, {
+        backgroundColor: color,
+        shadowColor:     color,
+        shadowOffset:    { width: 0, height: 0 },
+        shadowOpacity:   0.8,
+        shadowRadius:    4,
+      }]} />
+      <Text style={[s.statusText, { color }]}>
         {completed ? 'Completed' : 'Quit Early'}
       </Text>
     </View>
@@ -48,44 +58,65 @@ export function StatusBadge({ completed }) {
 }
 
 // ── Score Badge ───────────────────────────
-
+// Colour-coded number badge by score tier
+// Usage: <ScoreBadge score={72} />
 export function ScoreBadge({ score }) {
-  const getColor = () => {
-    if (score >= 80) return { bg: '#dcfce7', text: '#15803d' };
-    if (score >= 60) return { bg: '#fef9c3', text: '#a16207' };
-    if (score >= 40) return { bg: '#ffedd5', text: '#c2410c' };
-    return              { bg: '#fee2e2', text: '#dc2626' };
-  };
-  const { bg, text } = getColor();
+  const color = score >= 80 ? C.blue   :
+                score >= 60 ? C.mint   :
+                score >= 40 ? C.orange : C.red;
+  const bg    = score >= 80 ? C.blueSoft   :
+                score >= 60 ? C.mintSoft   :
+                score >= 40 ? C.orangeSoft : C.redSoft;
 
   return (
-    <View style={[styles.scoreBadge, { backgroundColor: bg }]}>
-      <Text style={[styles.scoreText, { color: text }]}>{score}</Text>
+    <View style={[s.scoreBadge, { backgroundColor: bg, borderColor: color + '40' }]}>
+      <Text style={[s.scoreText, { color }]}>{score}</Text>
+    </View>
+  );
+}
+
+// ── Rank Badge ────────────────────────────
+// S / A / B / C tier label — RPG rank system
+// Usage: <RankBadge score={72} />
+export function RankBadge({ score = 0 }) {
+  const label = score >= 80 ? 'S' : score >= 60 ? 'A' : score >= 40 ? 'B' : 'C';
+  const color = score >= 80 ? C.blue   :
+                score >= 60 ? C.mint   :
+                score >= 40 ? C.orange : C.muted;
+  return (
+    <View style={[s.rankBadge, { backgroundColor: color + '1a', borderColor: color + '55' }]}>
+      <Text style={[s.rankText, { color }]}>RANK {label}</Text>
     </View>
   );
 }
 
 // ── Tag ───────────────────────────────────
-
-export function Tag({ label }) {
+// Generic muted pill for misc labels
+// Usage: <Tag label="Night Owl" />
+//        <Tag label="Math" color={C.purple} />
+export function Tag({ label, color = null }) {
   return (
-    <View style={styles.tag}>
-      <Text style={styles.tagText}>{label}</Text>
+    <View style={[
+      s.tag,
+      color && { backgroundColor: color + '18', borderColor: color + '40' },
+    ]}>
+      <Text style={[s.tagText, color && { color }]}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
 
-  // ── Badge ─────────────────────────────
+  // ── Subject Badge ─────────────────────
   badge: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    gap:              5,
-    borderRadius:     20,
-    paddingVertical:  5,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               5,
+    borderRadius:      20,
+    paddingVertical:   5,
     paddingHorizontal: 11,
-    alignSelf:        'flex-start',
+    alignSelf:         'flex-start',
+    borderWidth:       0.5,
   },
   badgeSm: {
     paddingVertical:   3,
@@ -97,8 +128,8 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   badgeText: {
-    fontSize:   12,
-    fontWeight: '700',
+    fontSize:      12,
+    fontWeight:    '700',
     letterSpacing: 0.2,
   },
   badgeTextSm: {
@@ -107,13 +138,14 @@ const styles = StyleSheet.create({
 
   // ── Status Badge ──────────────────────
   status: {
-    flexDirection:    'row',
-    alignItems:       'center',
-    gap:              5,
-    borderRadius:     20,
-    paddingVertical:  4,
+    flexDirection:     'row',
+    alignItems:        'center',
+    gap:               5,
+    borderRadius:      20,
+    paddingVertical:   4,
     paddingHorizontal: 10,
-    alignSelf:        'flex-start',
+    alignSelf:         'flex-start',
+    borderWidth:       0.5,
   },
   statusDot: {
     width:        6,
@@ -121,34 +153,51 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   statusText: {
-    fontSize:   11,
-    fontWeight: '700',
+    fontSize:      11,
+    fontWeight:    '700',
     letterSpacing: 0.2,
   },
 
   // ── Score Badge ───────────────────────
   scoreBadge: {
-    borderRadius:     10,
-    paddingVertical:  4,
+    borderRadius:      10,
+    paddingVertical:   4,
     paddingHorizontal: 10,
-    alignSelf:        'flex-start',
+    alignSelf:         'flex-start',
+    borderWidth:       0.5,
   },
   scoreText: {
     fontSize:   13,
     fontWeight: '800',
   },
 
+  // ── Rank Badge ────────────────────────
+  rankBadge: {
+    borderRadius:      6,
+    paddingVertical:   3,
+    paddingHorizontal: 8,
+    alignSelf:         'flex-start',
+    borderWidth:       0.5,
+  },
+  rankText: {
+    fontSize:      9,
+    fontWeight:    '900',
+    letterSpacing: 2,
+  },
+
   // ── Tag ───────────────────────────────
   tag: {
-    backgroundColor:  '#f1f5f9',
-    borderRadius:     6,
-    paddingVertical:  3,
+    backgroundColor:   C.bgHover,
+    borderRadius:      6,
+    paddingVertical:   3,
     paddingHorizontal: 8,
-    alignSelf:        'flex-start',
+    alignSelf:         'flex-start',
+    borderWidth:       0.5,
+    borderColor:       C.border,
   },
   tagText: {
     fontSize:   11,
-    color:      '#64748b',
+    color:      C.muted,
     fontWeight: '600',
   },
 });

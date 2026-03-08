@@ -5,9 +5,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { C, sColor, sBg, SUBJECT_ICONS } from '../../themes';
 import { Card } from '../../components';
 import { Avatar } from '../../components';
-import { useSessions } from '../../hooks/useSessions';
+import { useSession } from '../../context/sessionContext';
 import { useAuth } from '../../hooks/useAuth';
-import { SAMPLE_SESSIONS, SAMPLE_USER } from '../../data/sampleData';
 
 function generateInsight(sessions = []) {
   const completed   = sessions.filter(s => s.completed);
@@ -72,14 +71,8 @@ const RECS = [
 ];
 
 export default function WeeklyReportScreen() {
-  let sessions = SAMPLE_SESSIONS;
-  let userData = SAMPLE_USER;
-  try {
-    const sCtx = useSessions();
-    const aCtx = useAuth();
-    if (sCtx?.sessions) sessions = sCtx.sessions;
-    if (aCtx?.userData) userData = aCtx.userData;
-  } catch (e) {}
+const { sessions } = useSession();
+const { userData } = useAuth();
 
   const insight    = generateInsight(sessions);
   const score      = userData?.score || userData?.disciplineScore || 72;

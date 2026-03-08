@@ -1,26 +1,26 @@
 
 
-import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Image, StyleSheet, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { C } from '../themes/colors';
 
-
+// Gradient pool — all vivid, all readable on void black
 const GRADIENTS = [
-  ['#6366f1', '#8b5cf6'], // indigo-purple
-  ['#ec4899', '#f43f5e'], // pink-rose
-  ['#3b82f6', '#06b6d4'], // blue-cyan
-  ['#10b981', '#14b8a6'], // green-teal
-  ['#f59e0b', '#ef4444'], // amber-red
-  ['#8b5cf6', '#d946ef'], // purple-fuchsia
-  ['#0ea5e9', '#6366f1'], // sky-indigo
-  ['#22c55e', '#3b82f6'], // green-blue
-  ['#f97316', '#eab308'], // orange-yellow
-  ['#14b8a6', '#22d3ee'], // teal-cyan
+  ['#5b3fd4', '#9b5cfc'],  // deep violet → electric violet
+  ['#ff4d6d', '#ff6b9d'],  // ember → hot pink
+  ['#0055ff', '#00e5a0'],  // electric blue → mint
+  ['#ff9a3c', '#ffd60a'],  // orange → neon yellow
+  ['#00e5a0', '#0055ff'],  // mint → electric blue
+  ['#b07ef8', '#ff6b9d'],  // light violet → pink
+  ['#ff6b9d', '#ff9a3c'],  // pink → orange
+  ['#9b5cfc', '#00e5a0'],  // volt → mint
+  ['#ffd60a', '#ff9a3c'],  // yellow → orange
+  ['#00e5a0', '#9b5cfc'],  // mint → volt
 ];
 
 function getGradient(name = 'U') {
-  const index = (name.charCodeAt(0) || 0) % GRADIENTS.length;
-  return GRADIENTS[index];
+  return GRADIENTS[(name.charCodeAt(0) || 0) % GRADIENTS.length];
 }
 
 function getInitials(name = 'U') {
@@ -29,7 +29,15 @@ function getInitials(name = 'U') {
     .map(w => w[0] || '')
     .join('')
     .toUpperCase()
-    .slice(0, 2);
+    .slice(0, 2) || '?';
+}
+
+// S/A/B/C rank from score — matches Solo Leveling rank system
+function getRank(score = 0) {
+  if (score >= 80) return { label: 'S', color: C.blue    };
+  if (score >= 60) return { label: 'A', color: C.mint    };
+  if (score >= 40) return { label: 'B', color: C.orange  };
+  return                   { label: 'C', color: C.muted  };
 }
 
 // ── Single Avatar ─────────────────────────
@@ -37,70 +45,126 @@ export function Avatar({
   name       = 'U',
   image      = null,
   size       = 44,
-  showStatus = false,
+  score      = null,    // if provided: shows glow ring + rank badge
+  glow       = false,   // breathing glow halo without rank
+  showStatus = false,   // online indicator dot (legacy support)
   online     = false,
   style      = {},
 }) {
-  const [gradStart, gradEnd] = getGradient(name);
+  const [imgErr, setImgErr] = useState(false);
+  const pulse = useRef(new Animated.Value(1)).current;
+
+  const hasRing   = score !== null || glow;
+  const rank      = score !== null ? getRank(score) : null;
+  const [g0, g1]  = getGradient(name);
   const initials  = getInitials(name);
-  const fontSize  = Math.floor(size * 0.35);
-  const dotSize   = Math.floor(size * 0.27);
+  const fontSize  = Math.floor(size * 0.33);
 
+  // Breathing halo animation
+  useEffect(() => {
+    if (!hasRing) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.12, duration: 2200, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1,    duration: 2200, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [hasRing]);
+
+  const showPhoto = image && !imgErr;
+  const ringSize  = size + 8;     // border ring is 4px larger each side
+  const wrapSize  = hasRing ? ringSize + 16 : size;  // extra room for glow
+
+  const avatarInner = showPhoto ? (
+    <Image
+      source={{ uri: image }}
+      style={{ width: size, height: size, borderRadius: size / 2 }}
+      onError={() => setImgErr(true)}
+    />
+  ) : (
+    <LinearGradient
+      colors={[g0, g1]}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <Text style={{ color: '#fff', fontSize, fontWeight: '800', letterSpacing: 0.5 }}>
+        {initials}
+      </Text>
+    </LinearGradient>
+  );
+
+  if (!hasRing) {
+    // Simple avatar — no ring, legacy showStatus dot
+    return (
+      <View style={[{ width: size, height: size }, style]}>
+        {avatarInner}
+        {showStatus && (
+          <View style={[s.statusDot, {
+            width:           Math.floor(size * 0.27),
+            height:          Math.floor(size * 0.27),
+            borderRadius:    Math.floor(size * 0.135),
+            backgroundColor: online ? C.mint : C.muted,
+          }]} />
+        )}
+      </View>
+    );
+  }
+
+  // Glow ring avatar
   return (
-    <View style={[{ width: size, height: size }, style]}>
+    <View style={[{ width: wrapSize, height: wrapSize, alignItems: 'center', justifyContent: 'center' }, style]}>
 
-      {image ? (
-        // Real profile photo
-        <Image
-          source={{ uri: image }}
-          style={{
-            width:        size,
-            height:       size,
-            borderRadius: size / 2,
-            backgroundColor: '#e2e8f0',
-          }}
-          resizeMode="cover"
-        />
-      ) : (
-        // Gradient initials — looks clean and real
-        <LinearGradient
-          colors={[gradStart, gradEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={{
-            width:          size,
-            height:         size,
-            borderRadius:   size / 2,
-            alignItems:     'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Text style={{
-            color:         '#fff',
-            fontSize,
-            fontWeight:    '700',
-            letterSpacing: 0.5,
-          }}>
-            {initials}
+      {/* Breathing glow halo */}
+      <Animated.View style={{
+        position:        'absolute',
+        width:           ringSize + 14,
+        height:          ringSize + 14,
+        borderRadius:    (ringSize + 14) / 2,
+        backgroundColor: C.glow,
+        transform:       [{ scale: pulse }],
+      }} />
+
+      {/* Volt border ring */}
+      <View style={{
+        width:          ringSize,
+        height:         ringSize,
+        borderRadius:   ringSize / 2,
+        borderWidth:    1.5,
+        borderColor:    rank ? rank.color : C.blue,
+        alignItems:     'center',
+        justifyContent: 'center',
+      }}>
+        {avatarInner}
+      </View>
+
+      {/* Rank badge */}
+      {rank && (
+        <View style={{
+          position:        'absolute',
+          bottom:          2,
+          right:           2,
+          width:           Math.floor(size * 0.35),
+          height:          Math.floor(size * 0.35),
+          borderRadius:    Math.floor(size * 0.175),
+          backgroundColor: rank.color,
+          borderWidth:     2,
+          borderColor:     C.bg,
+          alignItems:      'center',
+          justifyContent:  'center',
+        }}>
+          <Text style={{ fontSize: Math.floor(size * 0.135), fontWeight: '900', color: '#fff' }}>
+            {rank.label}
           </Text>
-        </LinearGradient>
-      )}
-
-      {/* Online / offline status dot */}
-      {showStatus && (
-        <View style={[styles.dot, {
-          width:           dotSize,
-          height:          dotSize,
-          borderRadius:    dotSize / 2,
-          backgroundColor: online ? '#22c55e' : '#94a3b8',
-        }]} />
+        </View>
       )}
     </View>
   );
 }
 
 // ── Avatar Group ──────────────────────────
-// Overlapping avatars like team members
+// Overlapping stacked avatars — dark bg borders
 // Usage: <AvatarGroup names={['Mey','Liza','B Rom']} size={32} max={3} />
 export function AvatarGroup({ names = [], size = 32, max = 3 }) {
   const shown = names.slice(0, max);
@@ -113,8 +177,8 @@ export function AvatarGroup({ names = [], size = 32, max = 3 }) {
           marginLeft:   i === 0 ? 0 : -(size * 0.3),
           zIndex:       shown.length - i,
           borderRadius: size / 2,
-          borderWidth:  2.5,
-          borderColor:  '#ffffff',
+          borderWidth:  2,
+          borderColor:  C.bg,   // void bg border instead of white
         }}>
           <Avatar name={name} size={size} />
         </View>
@@ -124,17 +188,17 @@ export function AvatarGroup({ names = [], size = 32, max = 3 }) {
           width:           size,
           height:          size,
           borderRadius:    size / 2,
-          backgroundColor: '#f1f5f9',
+          backgroundColor: C.bgRaised,
           alignItems:      'center',
           justifyContent:  'center',
           marginLeft:      -(size * 0.3),
-          borderWidth:     2.5,
-          borderColor:     '#ffffff',
+          borderWidth:     2,
+          borderColor:     C.bg,
         }}>
           <Text style={{
             fontSize:   Math.floor(size * 0.28),
             fontWeight: '700',
-            color:      '#64748b',
+            color:      C.muted,
           }}>
             +{extra}
           </Text>
@@ -144,12 +208,12 @@ export function AvatarGroup({ names = [], size = 32, max = 3 }) {
   );
 }
 
-const styles = StyleSheet.create({
-  dot: {
+const s = StyleSheet.create({
+  statusDot: {
     position:    'absolute',
     bottom:      0,
     right:       0,
     borderWidth: 2,
-    borderColor: '#ffffff',
+    borderColor: C.bg,   // dark border instead of white
   },
 });

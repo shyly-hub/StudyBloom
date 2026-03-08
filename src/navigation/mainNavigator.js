@@ -12,7 +12,6 @@ import AnalyticsScreen from '../screens/analytics/AnalyticsScreen';
 import HistoryScreen   from '../screens/analytics/HistoryScreen';
 import WeeklyReportScreen from '../screens/analytics/WeeklyReportScreen';
 import SettingsScreen     from '../screens/analytics/SettingsScreen';
-
 import FocusScreen        from '../screens/study/FocusScreen';
 import DistractionScreen  from '../screens/study/DistractionScreen';
 import PostSessionLog     from '../screens/study/PostSessionLog';
@@ -145,7 +144,7 @@ export default function MainNavigator({ user, onLogout }) {
         name="Profile"
         options={{ animation: 'slide_from_right' }}
       >
-        {(props) => <ProfileScreen {...props} user={user} onLogout={onLogout} />}
+        {(props) => <ProfileScreen {...props} />}
       </Stack.Screen>
 
       {/* Quit reason modal — uncomment when B Rom adds FocusScreen */}

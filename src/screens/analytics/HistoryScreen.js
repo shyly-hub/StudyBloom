@@ -7,8 +7,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { C, MOODS, sColor, sBg, SUBJECT_ICONS } from '../../themes';
 import { Card } from '../../components';
-import { useSessions } from '../../hooks/useSessions';
-import { SAMPLE_SESSIONS } from '../../data/sampleData';
+import { useSession } from '../../context/sessionContext';
 
 const FILTERS = ['All', 'Done', 'Quit'];
 
@@ -103,13 +102,7 @@ export default function HistoryScreen() {
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
 
-  let sessions      = SAMPLE_SESSIONS;
-  let deleteSession = null;
-  try {
-    const ctx = useSessions();
-    if (ctx?.sessions)       sessions      = ctx.sessions;
-    if (ctx?.deleteSession)  deleteSession = ctx.deleteSession;
-  } catch (e) {}
+const { sessions, deleteSession } = useSession();
 
   const filtered = useMemo(() => {
     let list = [...sessions];

@@ -1,10 +1,5 @@
 
-//  Usage:
-//  import { SUBJECTS, MOODS, sColor } from '../theme'
-// ══════════════════════════════════════════
-
 import { C } from './colors';
-
 
 // ── Subjects list ─────────────────────────
 export const SUBJECTS = [
@@ -34,13 +29,12 @@ export const SUBJECT_ICONS = {
 };
 
 // ── Discipline score rules ────────────────
-// Used in scoreEngine.js to calculate score changes
 export const SCORE_RULES = {
-  COMPLETE_SESSION:       +10,  // finished full session
-  COMPLETE_NO_DISTRACT:   +5,   // finished with zero distractions
-  QUIT_EARLY:             -5,   // stopped before session ended
-  STUDIED_ON_TIME:        +3,   // studied during planned time
-  MISSED_PLANNED_TIME:    -3,   // missed planned study time
+  COMPLETE_SESSION:       +10,
+  COMPLETE_NO_DISTRACT:   +5,
+  QUIT_EARLY:             -5,
+  STUDIED_ON_TIME:        +3,
+  MISSED_PLANNED_TIME:    -3,
 };
 
 // ── Distraction types ─────────────────────
@@ -61,7 +55,7 @@ export const QUIT_REASONS = [
   'Too Hard',
 ];
 
-// ── Goal options (onboarding) ─────────────
+// ── Goal options ──────────────────────────
 export const GOALS = [
   'Exam Prep',
   'Skill Building',
@@ -80,22 +74,24 @@ export const EDU_LEVELS = [
   'Masters',
 ];
 
-// ── Helper: get subject main color ────────
-// Usage: sColor('Math') → '#a78bca'
+// ── Helper: subject main color ────────────
+// Returns vivid neon tone that reads on dark backgrounds
+// Usage: sColor('Math') → '#b07ef8'
 export function sColor(subject) {
   const map = {
-    Math:    C.purple,
-    Science: C.mint,
-    English: C.pink,
-    History: C.peach,
-    Coding:  C.blue,
-    Other:   C.yellow,
+    Math:    C.purple,   // vivid violet
+    Science: C.mint,     // electric green
+    English: C.pink,     // hot pink
+    History: C.peach,    // electric orange
+    Coding:  C.blue,     // electric violet (brand)
+    Other:   C.yellow,   // neon yellow
   };
   return map[subject] || C.blue;
 }
 
-// ── Helper: get subject soft background ───
-// Usage: sBg('Math') → '#ede8f8'
+// ── Helper: subject dark soft background ──
+// Returns translucent dark tint for cards/badges
+// Usage: sBg('Math') → 'rgba(176,126,248,0.14)'
 export function sBg(subject) {
   const map = {
     Math:    C.purpleSoft,
