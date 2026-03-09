@@ -64,6 +64,7 @@ function BottomTabs({ user }) {
       <Tab.Screen name="History" component={HistoryScreen} />
       <Tab.Screen name="Report"   component={WeeklyReportScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
+      
 
     </Tab.Navigator>
   );

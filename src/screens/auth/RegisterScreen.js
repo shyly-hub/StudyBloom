@@ -29,7 +29,6 @@ export default function RegisterScreen({ navigation }) {
     setLoading(true);
     try {
       await register(email.trim(), password, name.trim(), education);
-      // No navigation needed — App.js switches automatically via onAuthStateChanged
     } catch (err) {
       Alert.alert('Failed', err.message);
     } finally {
