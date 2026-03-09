@@ -7,6 +7,12 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import * as AuthSession from "expo-auth-session";
+
+WebBrowser.maybeCompleteAuthSession();
 
 const AuthContext = createContext({});
 
@@ -101,17 +107,43 @@ export default function AuthProvider({ children }) {
     }
   }
 
-  // ADDED THIS: To prevent the "undefined" error in LoginScreen
   async function googleLogin() {
-    setError(null);
-    // You can implement the actual Google logic here later
-    alert('Google Sign-In is not configured yet. Please use Email/Password.');
+  setError(null);
+
+  try {
+    const redirectUri = AuthSession.makeRedirectUri({
+      useProxy: true,
+    });
+
+    const result = await AuthSession.startAsync({
+      authUrl:
+        `https://accounts.google.com/o/oauth2/v2/auth` +
+        `?client_id=YOUR_GOOGLE_CLIENT_ID` +
+        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+        `&response_type=id_token` +
+        `&scope=openid%20profile%20email`,
+    });
+
+    if (result.type === "success") {
+      const { id_token } = result.params;
+
+      const credential = GoogleAuthProvider.credential(id_token);
+
+      const res = await signInWithCredential(auth, credential);
+
+      return res.user;
+    }
+
+  } catch (err) {
+    console.error(err);
+    setError("Google login failed");
+    throw err;
   }
+}
 
   async function logout() {
     try {
       await signOut(auth);
-      // State is cleared automatically by onAuthStateChanged
     } catch (err) {
       setError('Logout failed');
     }
