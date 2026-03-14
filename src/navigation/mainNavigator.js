@@ -1,166 +1,216 @@
-import React from 'react';
-import { Text, View, TouchableOpacity, StyleSheet } from 'react-native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator }   from '@react-navigation/bottom-tabs';
 
-import { C } from '../themes/colors';
-import { QUIT_REASONS } from '../themes/constants';
+import React         from 'react';
+import { View, Platform, Image } from 'react-native';
+import { createBottomTabNavigator }    from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator }  from '@react-navigation/native-stack';
+import Svg, { Path, Circle, Rect }     from 'react-native-svg';
 
-import HomeScreen      from '../screens/main/HomeScreen';
-import ProfileScreen   from '../screens/main/ProfileScreen';
-import AnalyticsScreen from '../screens/analytics/AnalyticsScreen';
-import HistoryScreen   from '../screens/analytics/HistoryScreen';
+import HomeScreen         from '../screens/main/HomeScreen';
+import AnalyticsScreen    from '../screens/analytics/AnalyticsScreen';
+import HistoryScreen      from '../screens/analytics/HistoryScreen';
 import WeeklyReportScreen from '../screens/analytics/WeeklyReportScreen';
+import ProfileScreen      from '../screens/main/ProfileScreen';
 import SettingsScreen     from '../screens/analytics/SettingsScreen';
 import FocusScreen        from '../screens/study/FocusScreen';
 import DistractionScreen  from '../screens/study/DistractionScreen';
 import PostSessionLog     from '../screens/study/PostSessionLog';
+import ScheduleScreen     from '../screens/study/ScheduleScreen';
+
+import { useTheme } from '../context/ThemeContext';
+import { useAuth }  from '../hooks/useAuth';
 
 const Tab   = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const TAB_ICONS = {
-  Home:      '🏠',
-  Analytics: '📊',
-  History:   '📜',
-  Report:    '📋',
-  Settings:  '⚙️',
-};
-
-// ── Bottom Tabs ───────────────────────────
-function BottomTabs({ user }) {
+// ── SVG Icons ─────────────────────────────────────────────────
+function IconHome({ color, filled }) {
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: C.card,
-          borderTopColor:  C.border,
-          borderTopWidth:  1,
-          height:          75,
-          paddingBottom:   18,
-          paddingTop:      10,
-        },
-        tabBarActiveTintColor:   C.blue,
-        tabBarInactiveTintColor: C.muted,
-        tabBarLabelStyle: {
-          fontSize:      9,
-          letterSpacing: 1,
-          textTransform: 'uppercase',
-          fontWeight:    '600',
-        },
-        tabBarIcon: ({ color }) => (
-          <Text style={{ fontSize: 18, color }}>
-            {TAB_ICONS[route.name] || '○'}
-          </Text>
-        ),
-      })}
-    >
-      <Tab.Screen name="Home">
-        {(props) => <HomeScreen {...props} user={user} />}
-      </Tab.Screen>
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {filled
+        ? <Path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" fill={color} />
+        : <Path d="M3 12L12 3L21 12V21H15V15H9V21H3V12Z" stroke={color} strokeWidth="1.8" strokeLinejoin="round" fill="none" />
+      }
+    </Svg>
+  );
+}
 
-      <Tab.Screen name="Analytics" component={AnalyticsScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Report"   component={WeeklyReportScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
-      
+function IconStats({ color, filled }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {filled ? (
+        <>
+          <Rect x="3"  y="12" width="4" height="9" rx="1" fill={color} />
+          <Rect x="10" y="7"  width="4" height="14" rx="1" fill={color} />
+          <Rect x="17" y="3"  width="4" height="18" rx="1" fill={color} />
+        </>
+      ) : (
+        <>
+          <Rect x="3"  y="12" width="4" height="9"  rx="1" stroke={color} strokeWidth="1.8" fill="none" />
+          <Rect x="10" y="7"  width="4" height="14" rx="1" stroke={color} strokeWidth="1.8" fill="none" />
+          <Rect x="17" y="3"  width="4" height="18" rx="1" stroke={color} strokeWidth="1.8" fill="none" />
+        </>
+      )}
+    </Svg>
+  );
+}
+
+function IconHistory({ color, filled }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {filled ? (
+        <>
+          <Path d="M4 4H20C20.55 4 21 4.45 21 5V19C21 19.55 20.55 20 20 20H4C3.45 20 3 19.55 3 19V5C3 4.45 3.45 4 4 4Z" fill={color} />
+          <Path d="M7 9H17M7 12H14M7 15H11" stroke="white" strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      ) : (
+        <>
+          <Path d="M4 4H20C20.55 4 21 4.45 21 5V19C21 19.55 20.55 20 20 20H4C3.45 20 3 19.55 3 19V5C3 4.45 3.45 4 4 4Z" stroke={color} strokeWidth="1.8" fill="none" />
+          <Path d="M7 9H17M7 12H14M7 15H11" stroke={color} strokeWidth="1.8" strokeLinecap="round" />
+        </>
+      )}
+    </Svg>
+  );
+}
+
+function IconReport({ color, filled }) {
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      <Path d="M21 21L3 21L3 3" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" />
+      <Path d="M6 16L10 11L14 14L19 7" stroke={color}
+        strokeWidth={filled ? 2.5 : 1.8}
+        strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      {filled && <Circle cx="19" cy="7" r="2.5" fill={color} />}
+    </Svg>
+  );
+}
+
+function IconProfile({ color, filled, photoURL }) {
+  if (photoURL) {
+    return (
+      <View style={{ width: 26, height: 26, borderRadius: 13, overflow: 'hidden', borderWidth: filled ? 2.5 : 1.5, borderColor: color }}>
+        <Image source={{ uri: photoURL }} style={{ width: '100%', height: '100%' }} />
+      </View>
+    );
+  }
+  return (
+    <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+      {filled ? (
+        <>
+          <Circle cx="12" cy="8" r="4" fill={color} />
+          <Path d="M4 20C4 16.686 7.582 14 12 14C16.418 14 20 16.686 20 20" stroke={color} strokeWidth="1.8" strokeLinecap="round" fill="none" />
+        </>
+      ) : (
+        <>
+          <Circle cx="12" cy="8" r="4" stroke={color} strokeWidth="1.8" fill="none" />
+          <Path d="M4 20C4 16.686 7.582 14 12 14C16.418 14 20 16.686 20 20" stroke={color} strokeWidth="1.8" strokeLinecap="round" fill="none" />
+        </>
+      )}
+    </Svg>
+  );
+}
+
+// ── Bottom Tabs ────────────────────────────────────────────────
+function BottomTabs() {
+  const { C }    = useTheme();
+  const auth     = useAuth?.() || {};
+  const photoURL = auth.userData?.photoURL || auth.user?.photoURL || null;
+
+  // Shared screen options — label rendered by React Navigation (no wrap)
+  const screenOpts = ({ route }) => ({
+    headerShown: false,
+    tabBarActiveTintColor:   C.blueDark,
+    tabBarInactiveTintColor: C.muted,
+    tabBarLabelStyle: {
+      fontSize:      11,
+      fontWeight:    '600',
+      letterSpacing: 0.1,
+      // KEY FIX: force single line, no wrapping
+      numberOfLines: 1,
+    },
+    tabBarStyle: {
+      backgroundColor:  C.card,
+      borderTopWidth:   0.5,
+      borderTopColor:   C.border,
+      height:           Platform.OS === 'ios' ? 84 : 64,
+      paddingBottom:    Platform.OS === 'ios' ? 24 : 8,
+      paddingTop:       8,
+      shadowColor:      '#000',
+      shadowOffset:     { width: 0, height: -2 },
+      shadowOpacity:    0.06,
+      shadowRadius:     8,
+      elevation:        12,
+    },
+    // Each tab item gets equal flex so labels never overflow
+    tabBarItemStyle: {
+      flex:     1,
+      paddingHorizontal: 0,
+    },
+  });
+
+  return (
+    <Tab.Navigator screenOptions={screenOpts}>
+
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          tabBarLabel: 'Home',
+          tabBarIcon:  ({ focused, color }) => <IconHome    color={color} filled={focused} />,
+        }}
+      />
+
+      <Tab.Screen
+        name="Stats"
+        component={AnalyticsScreen}
+        options={{
+          tabBarLabel: 'Stats',
+          tabBarIcon:  ({ focused, color }) => <IconStats   color={color} filled={focused} />,
+        }}
+      />
+
+      <Tab.Screen
+        name="History"
+        component={HistoryScreen}
+        options={{
+          tabBarLabel: 'History',
+          tabBarIcon:  ({ focused, color }) => <IconHistory color={color} filled={focused} />,
+        }}
+      />
+
+      <Tab.Screen
+        name="Report"
+        component={WeeklyReportScreen}
+        options={{
+          tabBarLabel: 'Report',
+          tabBarIcon:  ({ focused, color }) => <IconReport  color={color} filled={focused} />,
+        }}
+      />
+
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon:  ({ focused, color }) => (
+            <IconProfile color={color} filled={focused} photoURL={photoURL} />
+          ),
+        }}
+      />
 
     </Tab.Navigator>
   );
 }
 
-// ── Quit Reason Modal ─────────────────────
-// Shown when user taps Quit during a focus session
-function QuitReasonScreen({ navigation, route }) {
-  const [selected, setSelected] = React.useState(null);
-  const { elapsedMin, subject, distractions } = route?.params || {};
-
-  return (
-    <View style={qs.overlay}>
-      <View style={qs.sheet}>
-        <Text style={qs.title}>Why are you stopping?</Text>
-        <Text style={qs.sub}>Helps us detect your patterns</Text>
-
-        {QUIT_REASONS.map(reason => (
-          <TouchableOpacity
-            key={reason}
-            style={[qs.option, selected === reason && qs.optionActive]}
-            onPress={() => setSelected(reason)}
-          >
-            <Text style={[qs.optionText, selected === reason && qs.optionTextActive]}>
-              {reason}
-            </Text>
-          </TouchableOpacity>
-        ))}
-
-        <TouchableOpacity
-          style={qs.endBtn}
-          onPress={() => navigation.replace('PostSession', {
-            completed:    false,
-            elapsedMin:   elapsedMin   || 1,
-            subject:      subject      || 'Study',
-            distractions: distractions || 0,
-            quitReason:   selected,
-          })}
-        >
-          <Text style={qs.endBtnText}>End Session</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={qs.keepBtn} onPress={() => navigation.goBack()}>
-          <Text style={qs.keepBtnText}>Keep Going</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
-
-const qs = StyleSheet.create({
-  overlay:          { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet:            { backgroundColor: C.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 44 },
-  title:            { fontSize: 18, fontWeight: '800', color: C.text, marginBottom: 4 },
-  sub:              { fontSize: 11, color: C.muted, letterSpacing: 1, marginBottom: 20 },
-  option:           { padding: 13, backgroundColor: C.bgWhite, borderWidth: 1, borderColor: C.border, borderRadius: 10, marginBottom: 8 },
-  optionActive:     { borderColor: C.blue, backgroundColor: C.blueSoft },
-  optionText:       { fontSize: 13, color: C.muted },
-  optionTextActive: { color: C.blue, fontWeight: '600' },
-  endBtn:           { padding: 14, borderWidth: 1, borderColor: C.red, borderRadius: 10, alignItems: 'center', marginTop: 8, marginBottom: 4 },
-  endBtnText:       { fontSize: 12, letterSpacing: 2, color: C.red, textTransform: 'uppercase' },
-  keepBtn:          { padding: 14, alignItems: 'center' },
-  keepBtnText:      { fontSize: 12, letterSpacing: 2, color: C.muted, textTransform: 'uppercase' },
-});
-
-// ── Main Stack ────────────────────────────
-export default function MainNavigator({ user, onLogout }) {
+// ── Root Stack ─────────────────────────────────────────────────
+export default function MainNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-
-      {/* Tabs — always the base screen */}
-      <Stack.Screen name="Tabs">
-        {(props) => <BottomTabs {...props} user={user} onLogout={onLogout} />}
-      </Stack.Screen>
-
-      {/* Profile — slides in from right */}
-      <Stack.Screen
-        name="Profile"
-        options={{ animation: 'slide_from_right' }}
-      >
-        {(props) => <ProfileScreen {...props} />}
-      </Stack.Screen>
-
-      {/* Quit reason modal — uncomment when B Rom adds FocusScreen */}
-      <Stack.Screen
-        name="QuitReason"
-        component={QuitReasonScreen}
-        options={{ animation: 'slide_from_bottom', presentation: 'transparentModal' }}
-      />
-      
-
-      {/* These unlock when B Rom finishes study screens */}
+      <Stack.Screen name="Tabs"        component={BottomTabs}        />
+      <Stack.Screen name="Settings"    component={SettingsScreen}    options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Schedule"    component={ScheduleScreen}    options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="Focus"       component={FocusScreen}       options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
-      <Stack.Screen name="Distraction" component={DistractionScreen} options={{ animation: 'slide_from_bottom', presentation: 'transparentModal' }} />
-      <Stack.Screen name="PostSession" component={PostSessionLog}    options={{ animation: 'fade' }} /> 
-
+      <Stack.Screen name="Distraction" component={DistractionScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
+      <Stack.Screen name="PostSession" component={PostSessionLog}    options={{ animation: 'fade' }} />
     </Stack.Navigator>
   );
 }

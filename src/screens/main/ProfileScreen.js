@@ -1,169 +1,453 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
-import { useAuth } from '../../hooks/useAuth';
-import { C } from '../../themes';
-import { Avatar, Card, StatCard, PrimaryButton, SecondaryButton, ListCard } from '../../components';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  Alert, TextInput, Modal, ActivityIndicator, Image,
+} from 'react-native';
+import { useTheme }    from '../../context/ThemeContext';
+import { useAuth }     from '../../hooks/useAuth';
+import { useSession }  from '../../context/sessionContext';
+import { StatCard }    from '../../components';
 
-export default function ProfileScreen({ navigation, onLogout }) {
-  const { user, userData, logout, updateUserData } = useAuth();
-  const [edit, setEdit] = useState(false);
-  const [editName, setEditName] = useState(userData?.name || '');
-  const [editGoal, setEditGoal] = useState(userData?.dailyGoal?.toString() || '100');
+// ── Anime avatar options ──────────────────
+const AVATARS = [
+  { id: 'boy1',  label: 'Boy 1',  gender: 'boy',  uri: require('../../../assets/boy1.jpg')  },
+  { id: 'boy2',  label: 'Boy 2',  gender: 'boy',  uri: require('../../../assets/boy2.jpg')  },
+  { id: 'boy3',  label: 'Boy 3',  gender: 'boy',  uri: require('../../../assets/boy3.jpg')  },
+  { id: 'girl1', label: 'Girl 1', gender: 'girl', uri: require('../../../assets/girl1.jpg') },
+  { id: 'girl2', label: 'Girl 2', gender: 'girl', uri: require('../../../assets/girl2.jpg') },
+  { id: 'girl3', label: 'Girl 3', gender: 'girl', uri: require('../../../assets/girl3.jpg') },
+  { id: 'girl4', label: 'Girl 4', gender: 'girl', uri: require('../../../assets/girl4.jpg') },
+];
 
-  const getName = () => userData?.name || user?.displayName || 'Student';
-  const hours = Math.round((userData?.totalMinutes || 0) / 60 * 10) / 10;
 
-  function handleLogout() {
-    Alert.alert(
-      'Log Out', 
-      'Are you sure you want to log out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Log Out', 
-          style: 'destructive', 
-          onPress: async () => {
-            try {
-              await logout();
-            } catch (err) {
-              Alert.alert('Error', 'Failed to log out');
-            }
-          }
-        }
-      ]
-    );
-  }
-
-  function handleSave() {
-    if (!editName.trim()) {
-      Alert.alert('Error', 'Please enter a valid name');
-      return;
-    }
-    const goal = parseInt(editGoal);
-    if (isNaN(goal) || goal < 10 || goal > 500) {
-      Alert.alert('Error', 'Daily goal must be between 10-500 minutes');
-      return;
-    }
-    
-    updateUserData({ name: editName.trim(), dailyGoal: goal })
-      .then(() => {
-        setEdit(false);
-        Alert.alert('Success', 'Profile updated successfully');
-      })
-      .catch(() => Alert.alert('Error', 'Failed to update profile'));
-  }
+// ── Avatar display ────────────────────────
+function AvatarDisplay({ avatarId, name, size = 90, C }) {
+  const avatar  = AVATARS.find(a => a.id === avatarId);
+  const initials = name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?';
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Profile</Text>
-        <View style={{ width: 50 }} />
-      </View>
-
-      <Card style={styles.profileCard}>
-        <Avatar name={getName()} size={80} style={styles.avatar} />
-        <Text style={styles.userName}>{getName()}</Text>
-        <Text style={styles.email}>{user?.email}</Text>
-        <Text style={styles.badge}>{userData?.education || 'Student'}</Text>
-        <TouchableOpacity style={styles.editBtn} onPress={() => setEdit(true)}>
-          <Text style={styles.editText}>Edit Profile</Text>
-        </TouchableOpacity>
-      </Card>
-
-      <View style={styles.stats}>
-        <StatCard value={userData?.score || 0} label="Score" color={C.blue} style={styles.stat} />
-        <StatCard value={userData?.streak || 0} label="Streak" color={C.peach} style={styles.stat} />
-        <StatCard value={hours} label="Hours" color={C.mint} style={styles.stat} />
-        <StatCard value={userData?.totalSessions || 0} label="Sessions" color={C.purple} style={styles.stat} />
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Settings</Text>
-        <ListCard accentColor={C.blue} onPress={() => setEdit(true)}>
-          <Text style={styles.listIcon}>✏️</Text>
-          <Text style={styles.listText}>Edit Profile</Text>
-          <Text style={styles.listArrow}>›</Text>
-        </ListCard>
-        <ListCard accentColor={C.muted} onPress={() =>navigation.navigate('Tabs', {screen: 'Settings',})}>
-          <Text style={styles.listIcon}>⚙️</Text>
-          <Text style={styles.listText}>App Settings</Text>
-          <Text style={styles.listArrow}>›</Text>
-        </ListCard>
-      </View>
-
-      <TouchableOpacity style={styles.logout} onPress={handleLogout}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </TouchableOpacity>
-
-      {/* Edit Profile*/}
-      <Modal visible={edit} transparent animationType="slide">
-        <View style={styles.modalBg}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-            
-            <View style={styles.field}>
-              <Text style={styles.label}>Name</Text>
-              <TextInput 
-                style={styles.input} 
-                value={editName} 
-                onChangeText={setEditName} 
-                placeholder="Your name" 
-                placeholderTextColor={C.subtext} 
-              />
-            </View>
-            
-            <View style={styles.field}>
-              <Text style={styles.label}>Daily Goal (minutes)</Text>
-              <TextInput 
-                style={styles.input} 
-                value={editGoal} 
-                onChangeText={setEditGoal} 
-                placeholder="100" 
-                placeholderTextColor={C.subtext}
-              />
-            </View>
-            
-            <View style={styles.modalBtns}>
-              <SecondaryButton label="Cancel" onPress={() => setEdit(false)} style={styles.modalBtn} />
-              <PrimaryButton label="Save" onPress={handleSave} style={styles.modalBtn} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </ScrollView>
+    <View style={{
+      width: size, height: size, borderRadius: size / 2,
+      backgroundColor: C.blue + '20', borderWidth: 3, borderColor: C.blue,
+      alignItems: 'center', justifyContent: 'center',
+      marginBottom: 12, overflow: 'hidden',
+    }}>
+      {avatar ? (
+        <Image source={avatar.uri} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+      ) : (
+        <Text style={{ fontSize: size * 0.3, fontWeight: '800', color: C.blue }}>
+          {initials}
+        </Text>
+      )}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, paddingTop: 60 },
-  back: { fontSize: 16, color: C.blue, fontWeight: '600' },
-  title: { fontSize: 18, fontWeight: '700', color: C.text },
-  profileCard: { margin: 20, marginTop: 0, padding: 24, alignItems: 'center' },
-  avatar: { marginBottom: 16 },
-  userName: { fontSize: 24, fontWeight: '700', color: C.text },
-  email: { fontSize: 14, color: C.muted },
-  badge: { backgroundColor: C.blueSoft, paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20, color: C.blue, fontWeight: '600', marginTop: 12, marginBottom: 16 },
-  editBtn: { borderWidth: 1, borderColor: C.blue, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20 },
-  editText: { color: C.blue, fontWeight: '600' },
-  stats: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16 },
-  stat: { width: '50%', padding: 4 },
-  section: { padding: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: C.text, marginBottom: 16 },
-  listIcon: { fontSize: 20, marginRight: 12 },
-  listText: { flex: 1, fontSize: 16, color: C.text },
-  listArrow: { fontSize: 20, color: C.muted },
-  logout: { margin: 20, marginTop: 32, backgroundColor: C.redSoft, borderRadius: 12, padding: 16, alignItems: 'center' },
-  logoutText: { fontSize: 16, fontWeight: '700', color: C.red },
-  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
-  modal: { backgroundColor: C.card, borderRadius: 20, padding: 24 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: C.text, textAlign: 'center', marginBottom: 24 },
-  field: { marginBottom: 16 },
-  label: { fontSize: 14, fontWeight: '600', color: C.text, marginBottom: 8 },
-  input: { backgroundColor: C.bg, borderRadius: 12, padding: 16, fontSize: 16, color: C.text, borderWidth: 1, borderColor: C.border },
-  modalBtns: { flexDirection: 'row', marginTop: 16 },
-  modalBtn: { flex: 1, marginHorizontal: 4 },
-});
+// ── Avatar picker modal ───────────────────
+function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
+  const [selected, setSelected] = useState(current || null);
+  const [saving,   setSaving]   = useState(false);
+  const [filter,   setFilter]   = useState('all');
+
+  const filtered = filter === 'all'
+    ? AVATARS
+    : AVATARS.filter(a => a.gender === filter);
+
+  const handleSave = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try   { await onSave(selected); onClose(); }
+    catch { Alert.alert('Error', 'Could not save avatar.'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <View style={{
+          backgroundColor: C.card,
+          borderTopLeftRadius: 28, borderTopRightRadius: 28,
+          padding: 24, paddingBottom: 44,
+          borderTopWidth: 1, borderTopColor: C.border,
+        }}>
+          {/* Handle */}
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 20 }} />
+
+          <Text style={{ fontSize: 22, fontWeight: '800', color: C.text, marginBottom: 4 }}>
+            Choose Your Avatar
+          </Text>
+          <Text style={{ fontSize: 13, color: C.muted, marginBottom: 20 }}>
+            Cute anime characters just for you! 🌸
+          </Text>
+
+          {/* Gender filter */}
+          <View style={{
+            flexDirection: 'row', gap: 8, marginBottom: 20,
+            backgroundColor: C.bgRaised, borderRadius: 12,
+            padding: 4, borderWidth: 1, borderColor: C.border,
+          }}>
+            {[
+              { key: 'all',  label: 'All'   },
+              { key: 'boy',  label: '👦 Boys'  },
+              { key: 'girl', label: '👧 Girls' },
+            ].map(f => (
+              <TouchableOpacity
+                key={f.key}
+                onPress={() => setFilter(f.key)}
+                style={{
+                  flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center',
+                  backgroundColor: filter === f.key ? C.card : 'transparent',
+                  shadowColor: filter === f.key ? C.shadow : 'transparent',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 1, shadowRadius: 4, elevation: filter === f.key ? 2 : 0,
+                }}
+              >
+                <Text style={{
+                  fontSize: 12, fontWeight: filter === f.key ? '700' : '500',
+                  color: filter === f.key ? C.text : C.muted,
+                }}>
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Avatar grid */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
+            {filtered.map(a => {
+              const isSelected = selected === a.id;
+              return (
+                <TouchableOpacity
+                  key={a.id}
+                  onPress={() => setSelected(a.id)}
+                  activeOpacity={0.8}
+                  style={{
+                    width: 76, alignItems: 'center', gap: 6,
+                  }}
+                >
+                  <View style={{
+                    width: 72, height: 72, borderRadius: 36,
+                    overflow: 'hidden',
+                    borderWidth: isSelected ? 3 : 1.5,
+                    borderColor: isSelected ? C.blue : C.border,
+                    backgroundColor: C.bgRaised,
+                  }}>
+                    <Image source={a.uri} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                    {isSelected && (
+                      <View style={{
+                        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                        backgroundColor: C.blue + '20',
+                        alignItems: 'flex-end', justifyContent: 'flex-start',
+                        padding: 4,
+                      }}>
+                        <View style={{
+                          width: 18, height: 18, borderRadius: 9,
+                          backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center',
+                          borderWidth: 2, borderColor: C.card,
+                        }}>
+                          <Text style={{ fontSize: 9, color: '#fff', fontWeight: '800' }}>✓</Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{
+                    fontSize: 10, fontWeight: isSelected ? '700' : '500',
+                    color: isSelected ? C.blueDark : C.muted,
+                    textAlign: 'center',
+                  }}>
+                    {a.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Buttons */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.75}
+              style={{
+                flex: 1, height: 52, borderRadius: 14,
+                borderWidth: 1.5, borderColor: C.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: C.muted }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSave}
+              disabled={saving || !selected}
+              activeOpacity={0.85}
+              style={{
+                flex: 2, height: 52, borderRadius: 14,
+                backgroundColor: selected ? C.blue : C.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              {saving
+                ? <ActivityIndicator color="#2a2000" size="small" />
+                : <Text style={{
+                    fontSize: 15, fontWeight: '800',
+                    color: selected ? '#2a2000' : C.muted,
+                  }}>
+                    Save Avatar ✓
+                  </Text>
+              }
+            </TouchableOpacity>
+          </View>
+
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ── Edit Name Modal ───────────────────────
+function EditNameModal({ visible, currentName, onSave, onClose, C }) {
+  const [value,  setValue]  = useState(currentName || '');
+  const [saving, setSaving] = useState(false);
+  const [error,  setError]  = useState('');
+
+  const handleSave = async () => {
+    const t = value.trim();
+    if (!t)           { setError('Name cannot be empty.');   return; }
+    if (t.length < 2) { setError('At least 2 characters.'); return; }
+    setSaving(true); setError('');
+    try   { await onSave(t); onClose(); }
+    catch { setError('Failed to update. Try again.'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+        <View style={{
+          backgroundColor: C.card,
+          borderTopLeftRadius: 24, borderTopRightRadius: 24,
+          padding: 24, paddingBottom: 40,
+          borderTopWidth: 1, borderTopColor: C.border,
+        }}>
+          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 20 }} />
+          <Text style={{ fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 6 }}>Edit Name</Text>
+          <Text style={{ fontSize: 13, color: C.muted, marginBottom: 20 }}>
+            Appears on your profile and sessions.
+          </Text>
+          <View style={{
+            backgroundColor: C.bgRaised, borderRadius: 14,
+            borderWidth: 1.5, borderColor: error ? C.red : C.border,
+            paddingHorizontal: 16, height: 52,
+            justifyContent: 'center', marginBottom: 6,
+          }}>
+            <TextInput
+              style={{ fontSize: 16, color: C.text, fontWeight: '500' }}
+              value={value}
+              onChangeText={v => { setValue(v); setError(''); }}
+              placeholder="Your name"
+              placeholderTextColor={C.subtext}
+              autoFocus maxLength={32} selectionColor={C.blue}
+              returnKeyType="done" onSubmitEditing={handleSave}
+            />
+          </View>
+          {error
+            ? <Text style={{ fontSize: 12, color: C.red, marginBottom: 14, marginLeft: 4 }}>{error}</Text>
+            : <View style={{ height: 14 }} />
+          }
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity onPress={onClose} activeOpacity={0.75}
+              style={{
+                flex: 1, height: 50, borderRadius: 14,
+                borderWidth: 1.5, borderColor: C.border,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: C.muted }}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85}
+              style={{
+                flex: 1, height: 50, borderRadius: 14,
+                backgroundColor: C.blue,
+                alignItems: 'center', justifyContent: 'center',
+              }}>
+              {saving
+                ? <ActivityIndicator color="#2a2000" size="small" />
+                : <Text style={{ fontSize: 15, fontWeight: '800', color: '#2a2000' }}>Save</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════
+//  MAIN SCREEN
+// ══════════════════════════════════════════
+export default function ProfileScreen({ navigation }) {
+  const { C }   = useTheme();
+  const { user, userData, logout, updateUserData } = useAuth();
+  const { sessions } = useSession();
+
+  const [editNameOpen,   setEditNameOpen]   = useState(false);
+  const [avatarPickOpen, setAvatarPickOpen] = useState(false);
+
+  const name     = userData?.name     || user?.displayName || 'Student';
+  const email    = userData?.email    || user?.email       || '';
+  const avatarId = userData?.avatarId || null;
+  const score    = userData?.score    ?? 0;
+  const streak   = userData?.streak   ?? 0;
+  const hours    = Math.round(((userData?.totalMinutes || 0) / 60) * 10) / 10;
+
+  const handleSaveName = async (newName) => {
+    await updateUserData({ name: newName });
+  };
+
+  const handleSaveAvatar = async (newAvatarId) => {
+    await updateUserData({ avatarId: newAvatarId });
+  };
+
+  const handleLogout = () => Alert.alert(
+    'Log Out', `Sign out of ${email || 'your account'}?`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out', style: 'destructive',
+        onPress: async () => {
+          try { await logout(); }
+          catch { Alert.alert('Error', 'Failed to log out'); }
+        },
+      },
+    ]
+  );
+
+  const card = {
+    backgroundColor: C.card, borderRadius: 18, padding: 16,
+    borderWidth: 1, borderColor: C.border,
+    shadowColor: C.shadow, shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1, shadowRadius: 10, elevation: 2,
+  };
+
+  const rows = [
+    { icon: '✏️', bg: C.blueSoft,   label: 'Edit Name',      sub: name,                              onPress: () => setEditNameOpen(true)            },
+    { icon: '🎭', bg: C.purpleSoft, label: 'Change Avatar',  sub: 'Pick your anime character',        onPress: () => setAvatarPickOpen(true)          },
+    { icon: '⚙️', bg: C.yellowSoft, label: 'App Settings',   sub: 'Dark mode, notifications, goals', onPress: () => navigation.navigate('Settings')  },
+    { icon: '📅', bg: C.peachSoft,  label: 'Study Schedule', sub: 'Plan your weekly sessions',        onPress: () => navigation.navigate('Schedule')  },
+    { icon: '📊', bg: C.mintSoft,   label: 'Analytics',      sub: 'View your performance',            onPress: () => navigation.navigate('Analytics') },
+    { icon: '📋', bg: C.purpleSoft, label: 'History',        sub: 'See all your sessions',            onPress: () => navigation.navigate('History')   },
+  ];
+
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: C.bg }}
+      contentContainerStyle={{ paddingBottom: 100 }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* ── Header ── */}
+      <View style={{
+        paddingHorizontal: 20, paddingTop: 60, paddingBottom: 8,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <TouchableOpacity onPress={() => navigation.goBack()}
+          style={{
+            width: 38, height: 38, borderRadius: 19,
+            backgroundColor: C.bgRaised, alignItems: 'center', justifyContent: 'center',
+            borderWidth: 1, borderColor: C.border,
+          }}>
+          <Text style={{ fontSize: 20, color: C.text }}>‹</Text>
+        </TouchableOpacity>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: C.text }}>Profile</Text>
+        <View style={{ width: 38 }} />
+      </View>
+
+      {/* ── Profile card ── */}
+      <View style={[card, { marginHorizontal: 20, marginBottom: 16, alignItems: 'center', padding: 24 }]}>
+
+        {/* Avatar — tap to change */}
+        <TouchableOpacity onPress={() => setAvatarPickOpen(true)} activeOpacity={0.8} style={{ position: 'relative' }}>
+          <AvatarDisplay avatarId={avatarId} name={name} size={96} C={C} />
+          <View style={{
+            position: 'absolute', bottom: 14, right: -2,
+            width: 28, height: 28, borderRadius: 14,
+            backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center',
+            borderWidth: 2, borderColor: C.card,
+          }}>
+            <Text style={{ fontSize: 12 }}>✏️</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Name + edit button */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: C.text }}>{name}</Text>
+          <TouchableOpacity onPress={() => setEditNameOpen(true)} activeOpacity={0.7}
+            style={{ backgroundColor: C.blueSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: C.blueDark }}>Edit</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={{ fontSize: 13, color: C.muted, marginBottom: 12 }}>{email}</Text>
+
+        <View style={{ backgroundColor: C.blueSoft, paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20 }}>
+          <Text style={{ color: C.blueDark, fontWeight: '600', fontSize: 12 }}>
+            {userData?.education || 'Student'}
+          </Text>
+        </View>
+      </View>
+
+      {/* ── Stats ── */}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, marginBottom: 20 }}>
+        <StatCard value={score}           label="Score"    color={C.blue}   style={{ width: '50%', padding: 4 }} />
+        <StatCard value={streak}          label="Streak"   color={C.peach}  style={{ width: '50%', padding: 4 }} />
+        <StatCard value={hours}           label="Hours"    color={C.mint}   style={{ width: '50%', padding: 4 }} />
+        <StatCard value={sessions.length} label="Sessions" color={C.purple} style={{ width: '50%', padding: 4 }} />
+      </View>
+
+      {/* ── Account rows ── */}
+      <View style={{ paddingHorizontal: 20, marginBottom: 20 }}>
+        <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 12 }}>Account</Text>
+        {rows.map((item, i) => (
+          <TouchableOpacity key={i} onPress={item.onPress} activeOpacity={0.8}
+            style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: C.card, borderRadius: 14, padding: 15,
+              marginBottom: 8, borderWidth: 1, borderColor: C.border,
+            }}>
+            <View style={{
+              width: 36, height: 36, borderRadius: 10,
+              backgroundColor: item.bg, alignItems: 'center', justifyContent: 'center',
+              marginRight: 12,
+            }}>
+              <Text style={{ fontSize: 16 }}>{item.icon}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: C.text }}>{item.label}</Text>
+              <Text style={{ fontSize: 11, color: C.muted, marginTop: 1 }} numberOfLines={1}>{item.sub}</Text>
+            </View>
+            <Text style={{ fontSize: 18, color: C.borderBright }}>›</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {/* ── Log out ── */}
+      <TouchableOpacity onPress={handleLogout} activeOpacity={0.8}
+        style={{
+          marginHorizontal: 20, backgroundColor: C.redSoft, borderRadius: 14,
+          padding: 16, alignItems: 'center',
+          borderWidth: 1, borderColor: C.red + '40', marginBottom: 16,
+        }}>
+        <Text style={{ fontSize: 15, fontWeight: '700', color: C.red }}>Log Out</Text>
+      </TouchableOpacity>
+
+      {/* ── Footer ── */}
+      <View style={{ alignItems: 'center', paddingBottom: 20 }}>
+        <Text style={{ fontSize: 11, color: C.subtext }}>StudyBloom v1.0.0 · Built by Team SB 💙</Text>
+      </View>
+
+      {/* ── Modals ── */}
+      <EditNameModal
+        visible={editNameOpen} currentName={name}
+        onSave={handleSaveName} onClose={() => setEditNameOpen(false)} C={C}
+      />
+      <AvatarPickerModal
+        visible={avatarPickOpen} current={avatarId}
+        onSave={handleSaveAvatar} onClose={() => setAvatarPickOpen(false)} C={C}
+      />
+
+    </ScrollView>
+  );
+}

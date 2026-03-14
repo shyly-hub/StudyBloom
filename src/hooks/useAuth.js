@@ -4,12 +4,22 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+
+import {
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  serverTimestamp
+} from 'firebase/firestore';
+
 import { auth, db } from '../config/firebase';
+
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import * as AuthSession from "expo-auth-session";
 
 WebBrowser.maybeCompleteAuthSession();
@@ -19,13 +29,16 @@ const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
 
 export default function AuthProvider({ children }) {
+
   const [user, setUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+
       if (!firebaseUser) {
         setUser(null);
         setUserData(null);
@@ -34,12 +47,16 @@ export default function AuthProvider({ children }) {
       }
 
       try {
+
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
 
         if (userDoc.exists()) {
+
           setUserData(userDoc.data());
+
         } else {
+
           const initialData = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -52,35 +69,54 @@ export default function AuthProvider({ children }) {
             totalMinutes: 0,
             createdAt: serverTimestamp(),
           };
+
           await setDoc(userDocRef, initialData);
           setUserData(initialData);
+
         }
+
       } catch (err) {
+
         console.error('Error fetching user data:', err);
+
       } finally {
+
         setUser(firebaseUser);
         setLoading(false);
+
       }
+
     });
 
     return unsubscribe;
+
   }, []);
 
   async function login(email, password) {
+
     setError(null);
+
     try {
+
       const res = await signInWithEmailAndPassword(auth, email, password);
       return res.user;
+
     } catch (err) {
+
       const msg = getErrorMessage(err.code);
       setError(msg);
       throw new Error(msg);
+
     }
+
   }
 
   async function register(email, password, name, education) {
+
     setError(null);
+
     try {
+
       const res = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = res.user;
 
@@ -98,58 +134,105 @@ export default function AuthProvider({ children }) {
       };
 
       await setDoc(doc(db, 'users', firebaseUser.uid), newUser);
+
       setUserData(newUser);
+
       return firebaseUser;
+
     } catch (err) {
+
       const msg = getErrorMessage(err.code);
       setError(msg);
       throw new Error(msg);
+
     }
+
   }
 
   async function googleLogin() {
-  setError(null);
 
-  try {
-    const redirectUri = AuthSession.makeRedirectUri({
-      useProxy: true,
-    });
+    setError(null);
 
-    const result = await AuthSession.startAsync({
-      authUrl:
-        `https://accounts.google.com/o/oauth2/v2/auth` +
-        `?client_id=YOUR_GOOGLE_CLIENT_ID` +
-        `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-        `&response_type=id_token` +
-        `&scope=openid%20profile%20email`,
-    });
+    try {
 
-    if (result.type === "success") {
-      const { id_token } = result.params;
+      const redirectUri = AuthSession.makeRedirectUri({
+        useProxy: true,
+      });
 
-      const credential = GoogleAuthProvider.credential(id_token);
+      const result = await AuthSession.startAsync({
 
-      const res = await signInWithCredential(auth, credential);
+        authUrl:
+          `https://accounts.google.com/o/oauth2/v2/auth` +
+          `?client_id=YOUR_GOOGLE_CLIENT_ID` +
+          `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+          `&response_type=id_token` +
+          `&scope=openid%20profile%20email`,
 
-      return res.user;
+      });
+
+      if (result.type === "success") {
+
+        const { id_token } = result.params;
+
+        const credential = GoogleAuthProvider.credential(id_token);
+
+        const res = await signInWithCredential(auth, credential);
+
+        return res.user;
+
+      }
+
+    } catch (err) {
+
+      console.error(err);
+      setError("Google login failed");
+      throw err;
+
     }
 
-  } catch (err) {
-    console.error(err);
-    setError("Google login failed");
-    throw err;
   }
-}
+
+  // ✅ ADDED FUNCTION (this fixes your ProfileScreen error)
+  async function updateUserData(data) {
+
+    if (!user) return;
+
+    try {
+
+      const userRef = doc(db, "users", user.uid);
+
+      await updateDoc(userRef, data);
+
+      setUserData(prev => ({
+        ...prev,
+        ...data
+      }));
+
+    } catch (err) {
+
+      console.error("Error updating user:", err);
+      setError("Failed to update profile");
+
+    }
+
+  }
 
   async function logout() {
+
     try {
+
       await signOut(auth);
+
     } catch (err) {
+
       setError('Logout failed');
+
     }
+
   }
 
   function getErrorMessage(code) {
+
     switch (code) {
       case 'auth/email-already-in-use': return 'This email is already registered.';
       case 'auth/invalid-email': return 'Enter a valid email address.';
@@ -158,18 +241,19 @@ export default function AuthProvider({ children }) {
       case 'auth/wrong-password': return 'Incorrect password.';
       default: return 'An error occurred. Try again.';
     }
+
   }
 
-  // FIXED: Added googleLogin to the value object
-  const value = { 
-    user, 
-    userData, 
-    loading, 
-    error, 
-    login, 
-    register, 
-    googleLogin, 
-    logout 
+  const value = {
+    user,
+    userData,
+    loading,
+    error,
+    login,
+    register,
+    googleLogin,
+    logout,
+    updateUserData // ✅ now available in ProfileScreen
   };
 
   return (
@@ -177,4 +261,5 @@ export default function AuthProvider({ children }) {
       {children}
     </AuthContext.Provider>
   );
+
 }

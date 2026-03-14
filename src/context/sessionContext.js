@@ -1,151 +1,105 @@
-//  Global state shared across ALL screens.
-//  Wraps the whole app so every screen can
-//  access sessions and discipline score
-//  without passing props everywhere.
-//
-//  Usage:
-//  -- In App.js (wrap everything):
-//  import { SessionProvider } from './src/context/SessionContext'
-//  <SessionProvider userId={user.uid}>
-//    <MainNavigator />
-//  </SessionProvider>
-//
-//  -- In any screen:
-//  import { useSession } from '../context/SessionContext'
-//  const { sessions, disciplineScore, addSession } = useSession()
-// ══════════════════════════════════════════
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useSessions } from '../hooks/useSessions';
-import { SCORE_RULES } from '../themes';
-import { SAMPLE_USER } from '../data/sampleData';
-import { doc, updateDoc } from 'firebase/firestore';
+import React, {
+  createContext, useContext, useState,
+  useEffect, useCallback, useRef,
+} from 'react';
+import {
+  collection, query, orderBy,
+  onSnapshot, deleteDoc, doc, limit,
+} from 'firebase/firestore';
 import { db } from '../config/firebase';
 
-// Create the context
 const SessionContext = createContext(null);
 
-// ── Provider component ────────────────────
-// Wrap this around your main navigator in App.js
 export function SessionProvider({ children, userId, initialScore = 50 }) {
-  const { sessions, loading, addSession, deleteSession } = useSessions(userId);
+  const [sessions,        setSessions]        = useState([]);
   const [disciplineScore, setDisciplineScore] = useState(initialScore);
+  const [loading,         setLoading]         = useState(true);
+  const unsubRef = useRef(null);
 
-  // ── Update score when sessions change ─
+  // ── Real-time Firestore listener ─────────────────────────────
   useEffect(() => {
-    if (sessions.length > 0) {
-      const score = calculateScore(sessions);
-      setDisciplineScore(score);
-    }
-  }, [sessions]);
+    if (!userId) { setLoading(false); return; }
 
-  // ── Calculate discipline score ────────
-  // Based on last 10 sessions
-  const calculateScore = (allSessions) => {
-    const recent = allSessions.slice(0, 10);
-    let score = 50; // start at 50
+    // Unsubscribe previous listener
+    if (unsubRef.current) unsubRef.current();
 
-    recent.forEach(session => {
-      if (session.completed) {
-        score += SCORE_RULES.COMPLETE_SESSION;
-        if (session.distractions?.length === 0) {
-          score += SCORE_RULES.COMPLETE_NO_DISTRACT;
-        }
-      } else {
-        score += SCORE_RULES.QUIT_EARLY;
-      }
-    });
+    const q = query(
+      collection(db, 'users', userId, 'sessions'),
+      orderBy('createdAt', 'desc'),
+      limit(200)
+    );
 
-    // Keep between 0 and 100
-    return Math.min(100, Math.max(0, score));
-  };
-
-  // ── Add session + update score ────────
-  // Called after PostSessionLog saves
-  const addSessionAndScore = async (sessionData) => {
-    await addSession(sessionData);
-
-    // Calculate score change for this session
-    let delta = 0;
-    if (sessionData.completed) {
-      delta += SCORE_RULES.COMPLETE_SESSION;
-      if (sessionData.distractions?.length === 0) {
-        delta += SCORE_RULES.COMPLETE_NO_DISTRACT;
-      }
-    } else {
-      delta += SCORE_RULES.QUIT_EARLY;
-    }
-
-    // Update score
-    const newScore = Math.min(100, Math.max(0, disciplineScore + delta));
-    setDisciplineScore(newScore);
-
-    // Save new score to Firestore
-    if (userId) {
-      try {
-        await updateDoc(doc(db, 'users', userId), {
-          disciplineScore: newScore,
-        });
-      } catch (error) {
-        console.log('Score update offline:', error.message);
-      }
-    }
-  };
-
-  // ── Stats helpers used by screens ─────
-  const getTodaySessions = () => {
-    const today = new Date().toISOString().split('T')[0];
-    return sessions.filter(s => s.date === today);
-  };
-
-  const getTodayMinutes = () => {
-    return getTodaySessions().reduce((total, s) => total + s.duration, 0);
-  };
-
-  const getStabilityPercent = () => {
-    if (sessions.length === 0) return 0;
-    const completed = sessions.filter(s => s.completed).length;
-    return Math.round((completed / sessions.length) * 100);
-  };
-
-  const getTopDistraction = () => {
-    const counts = {};
-    sessions.forEach(s => {
-      (s.distractions || []).forEach(d => {
-        counts[d] = (counts[d] || 0) + 1;
+    unsubRef.current = onSnapshot(q, (snap) => {
+      const docs = snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          ...data,
+          // Normalise: ensure durationSeconds exists
+          durationSeconds: data.durationSeconds ?? (data.duration ? data.duration * 60 : 0),
+          // Normalise date
+          date: data.date
+            ? (typeof data.date === 'string' ? data.date : data.date?.toDate?.().toISOString?.() || new Date().toISOString())
+            : new Date().toISOString(),
+        };
       });
+      setSessions(docs);
+      setLoading(false);
+    }, (err) => {
+      console.warn('SessionContext snapshot error:', err);
+      setLoading(false);
     });
-    if (Object.keys(counts).length === 0) return 'None';
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
-  };
+
+    return () => { if (unsubRef.current) unsubRef.current(); };
+  }, [userId]);
+
+  // ── addSession — INSTANT local update ────────────────────────
+  // PostSessionLog calls this right after writing to Firestore.
+  // The onSnapshot listener will also fire shortly after, but
+  // calling this first makes History feel instant.
+  const addSession = useCallback((sessionDoc) => {
+    setSessions(prev => {
+      // Avoid duplicate if onSnapshot fires before this runs
+      if (prev.some(s => s.id === sessionDoc.id)) return prev;
+      return [sessionDoc, ...prev];
+    });
+  }, []);
+
+  // ── deleteSession ─────────────────────────────────────────────
+  const deleteSession = useCallback(async (sessionId) => {
+    if (!userId || !sessionId) return;
+    // Optimistic update — remove immediately
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    try {
+      await deleteDoc(doc(db, 'users', userId, 'sessions', sessionId));
+    } catch (e) {
+      // If delete fails, onSnapshot will restore the correct state
+      console.warn('Delete failed:', e);
+    }
+  }, [userId]);
+
+  // ── Update score ──────────────────────────────────────────────
+  const updateScore = useCallback((newScore) => {
+    setDisciplineScore(Math.min(100, Math.max(0, newScore)));
+  }, []);
 
   return (
     <SessionContext.Provider value={{
-      // Data
       sessions,
-      loading,
       disciplineScore,
-
-      // Actions
-      addSession:    addSessionAndScore,
+      loading,
+      addSession,      // ← NEW: instant local push
       deleteSession,
-
-      // Stats helpers
-      getTodaySessions,
-      getTodayMinutes,
-      getStabilityPercent,
-      getTopDistraction,
+      updateScore,
     }}>
       {children}
     </SessionContext.Provider>
   );
 }
 
-// ── Hook to use context in any screen ────
 export function useSession() {
-  const context = useContext(SessionContext);
-  if (!context) {
-    throw new Error('useSession must be used inside <SessionProvider>');
-  }
-  return context;
+  const ctx = useContext(SessionContext);
+  if (!ctx) throw new Error('useSession must be used inside <SessionProvider>');
+  return ctx;
 }

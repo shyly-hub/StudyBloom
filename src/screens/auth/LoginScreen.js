@@ -31,17 +31,6 @@ export default function LoginScreen({ navigation }) {
     }
   }
 
-  async function handleGoogleLogin() {
-    setLoading(true);
-    try {
-      await googleLogin();
-    } catch (err) {
-      Alert.alert('Google Sign-In Failed', err.message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -106,8 +95,6 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.or}>or</Text>
           <View style={styles.line} />
         </View>
-
-        <SecondaryButton label="Continue with Google" onPress={handleGoogleLogin} style={styles.btn} />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>

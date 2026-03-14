@@ -1,23 +1,24 @@
-
+// src/screens/analytics/HistoryScreen.js
 import React, { useState, useMemo } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet,
+  View, Text, ScrollView,
   TouchableOpacity, TextInput, Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { C, MOODS, sColor, sBg, SUBJECT_ICONS } from '../../themes';
-import { Card } from '../../components';
-import { useSession } from '../../context/sessionContext';
+import { LinearGradient }    from 'expo-linear-gradient';
+import { useTheme }          from '../../context/ThemeContext';
+import { MOODS, sColor, sBg, SUBJECT_ICONS } from '../../themes';
+import { useSession }        from '../../context/sessionContext';
 
 const FILTERS = ['All', 'Done', 'Quit'];
 
-// ── Session Card ──────────────────────────
-function SessionCard({ session, onDelete }) {
+// ── Session Card ───────────────────────────────────────────────
+function SessionCard({ session, onDelete, C }) {
   const { subject, duration, mood, energy, difficulty, distractions, completed, notes, date } = session;
   const accentColor = completed ? C.green : C.red;
   const icon        = SUBJECT_ICONS?.[subject] || '📌';
   const distrCount  = Array.isArray(distractions) ? distractions.length : 0;
   const moodEmoji   = MOODS?.[mood] || '🙂';
+  const energyColor = energy === 'High' ? C.green : energy === 'Medium' ? C.yellow : C.red;
 
   const formatDate = (d) => {
     if (!d) return '';
@@ -25,69 +26,63 @@ function SessionCard({ session, onDelete }) {
     catch { return ''; }
   };
 
-  const handleDelete = () => {
-    Alert.alert('Delete Session', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => onDelete?.(session.id) },
-    ]);
-  };
-
-  const energyColor = energy === 'High' ? C.green : energy === 'Medium' ? C.yellow : C.red;
+  const handleDelete = () => Alert.alert('Delete Session', 'Are you sure?', [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Delete', style: 'destructive', onPress: () => onDelete?.(session.id) },
+  ]);
 
   return (
-    <View style={styles.sessionCard}>
-      {/* Left accent bar */}
-      <View style={[styles.cardAccent, { backgroundColor: accentColor }]} />
+    <View style={{ flexDirection: 'row', backgroundColor: C.card, borderRadius: 16, marginBottom: 10, overflow: 'hidden', borderWidth: 1, borderColor: C.border, shadowColor: C.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 8, elevation: 2 }}>
+      {/* Accent bar */}
+      <View style={{ width: 4, backgroundColor: accentColor }} />
 
-      <View style={styles.cardBody}>
+      <View style={{ flex: 1, padding: 14 }}>
         {/* Subject + status */}
-        <View style={styles.cardTop}>
-          <View style={[styles.subjectBadge, { backgroundColor: sBg(subject) }]}>
-            <Text style={styles.subjectIcon}>{icon}</Text>
-            <Text style={[styles.subjectName, { color: sColor(subject) }]}>{subject}</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: sBg(subject) }}>
+            <Text style={{ fontSize: 14 }}>{icon}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '700', color: sColor(subject) }}>{subject}</Text>
           </View>
-          <View style={[styles.statusPill, { backgroundColor: completed ? C.greenSoft : C.redSoft }]}>
-            <View style={[styles.statusDot, { backgroundColor: accentColor }]} />
-            <Text style={[styles.statusText, { color: accentColor }]}>
-              {completed ? 'Completed' : 'Quit Early'}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10, backgroundColor: completed ? C.greenSoft : C.redSoft }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: accentColor }} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: accentColor }}>{completed ? 'Completed' : 'Quit Early'}</Text>
           </View>
         </View>
 
         {/* Duration + date */}
         <View style={{ flexDirection: 'row', alignItems: 'baseline', marginBottom: 10 }}>
-          <Text style={styles.durationNum}>{duration}</Text>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: C.text }}>{duration}</Text>
           <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}> min</Text>
           <View style={{ width: 1, height: 16, backgroundColor: C.border, marginHorizontal: 12, alignSelf: 'center' }} />
           <Text style={{ fontSize: 13, color: C.muted }}>{formatDate(date)}</Text>
         </View>
 
         {/* Chips */}
-        <View style={styles.chipsRow}>
-          <View style={[styles.chip, { backgroundColor: C.blueSoft }]}>
+        <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: C.blueSoft }}>
             <Text style={{ fontSize: 13 }}>{moodEmoji}</Text>
           </View>
           {energy && (
-            <View style={[styles.chip, { backgroundColor: energyColor + '22' }]}>
-              <View style={[styles.chipDot, { backgroundColor: energyColor }]} />
-              <Text style={[styles.chipText, { color: energyColor }]}>{energy}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: energyColor + '22' }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: energyColor }} />
+              <Text style={{ fontSize: 11, fontWeight: '600', color: energyColor }}>{energy}</Text>
             </View>
           )}
           {difficulty > 0 && (
-            <View style={[styles.chip, { backgroundColor: C.blueSoft }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: C.blueSoft }}>
               {[1,2,3,4,5].map(n => (
-                <View key={n} style={[styles.diffDot, { backgroundColor: n <= difficulty ? sColor(subject) : C.border }]} />
+                <View key={n} style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: n <= difficulty ? sColor(subject) : C.border, marginHorizontal: 1 }} />
               ))}
             </View>
           )}
           {distrCount > 0 && (
-            <View style={[styles.chip, { backgroundColor: C.orangeSoft }]}>
+            <View style={{ borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8, backgroundColor: C.orangeSoft }}>
               <Text style={{ fontSize: 10, fontWeight: '700', color: C.orange }}>{distrCount} distr.</Text>
             </View>
           )}
         </View>
 
-        {notes ? <Text style={styles.notes} numberOfLines={2}>{notes}</Text> : null}
+        {notes ? <Text style={{ fontSize: 12, color: C.subtext, fontStyle: 'italic', lineHeight: 16 }} numberOfLines={2}>{notes}</Text> : null}
 
         <TouchableOpacity onPress={handleDelete} style={{ alignSelf: 'flex-end', marginTop: 8 }}>
           <Text style={{ fontSize: 11, color: C.red, fontWeight: '600' }}>Delete</Text>
@@ -97,12 +92,12 @@ function SessionCard({ session, onDelete }) {
   );
 }
 
-// ── Main Screen ───────────────────────────
+// ── Main ───────────────────────────────────────────────────────
 export default function HistoryScreen() {
+  const { C } = useTheme();   // ← LIVE THEME
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-
-const { sessions, deleteSession } = useSession();
+  const { sessions, deleteSession } = useSession();
 
   const filtered = useMemo(() => {
     let list = [...sessions];
@@ -117,24 +112,20 @@ const { sessions, deleteSession } = useSession();
     ? Math.round((sessions.filter(s => s.completed).length / sessions.length) * 100) : 0;
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView style={{ flex: 1, backgroundColor: C.bg }} contentContainerStyle={{ padding: 20, paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
 
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerSub}>Your study sessions</Text>
-        <Text style={styles.headerTitle}>History</Text>
+      <View style={{ marginBottom: 20, paddingTop: 8 }}>
+        <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 }}>Your study sessions</Text>
+        <Text style={{ fontSize: 26, fontWeight: '800', color: C.text }}>History</Text>
       </View>
 
-      {/* Banner */}
-      <LinearGradient
-        colors={[C.blueDark, C.blue]}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={styles.banner}
-      >
+      {/* Stats banner */}
+      <LinearGradient colors={[C.blueDark, C.blue]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ borderRadius: 20, padding: 20, flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}>
         {[
-          { val: sessions.length,                                      lbl: 'Sessions'   },
-          { val: `${Math.floor(totalMins/60)}h ${totalMins%60}m`,      lbl: 'Total Time' },
-          { val: `${completedPct}%`,                                   lbl: 'Completion' },
+          { val: sessions.length,                                 lbl: 'Sessions'   },
+          { val: `${Math.floor(totalMins/60)}h ${totalMins%60}m`, lbl: 'Total Time' },
+          { val: `${completedPct}%`,                              lbl: 'Completion' },
         ].map((s, i) => (
           <React.Fragment key={s.lbl}>
             {i > 0 && <View style={{ width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.25)' }} />}
@@ -147,10 +138,10 @@ const { sessions, deleteSession } = useSession();
       </LinearGradient>
 
       {/* Search */}
-      <View style={styles.searchBar}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 14, height: 48, marginBottom: 14, borderWidth: 1, borderColor: C.border }}>
         <Text style={{ fontSize: 16, marginRight: 8 }}>🔍</Text>
         <TextInput
-          style={styles.searchInput}
+          style={{ flex: 1, fontSize: 14, color: C.text }}
           placeholder="Search by subject..."
           placeholderTextColor={C.subtext}
           value={search}
@@ -164,13 +155,11 @@ const { sessions, deleteSession } = useSession();
       </View>
 
       {/* Filter tabs */}
-      <View style={styles.filterRow}>
+      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
         {FILTERS.map(f => (
-          <TouchableOpacity
-            key={f} onPress={() => setFilter(f)}
-            style={[styles.filterTab, filter === f && { backgroundColor: C.blue, borderColor: C.blue }]}
-          >
-            <Text style={[styles.filterTabTxt, filter === f && { color: '#fff' }]}>{f}</Text>
+          <TouchableOpacity key={f} onPress={() => setFilter(f)}
+            style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, backgroundColor: filter === f ? C.blue : C.card, borderWidth: 1, borderColor: filter === f ? C.blue : C.border }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: filter === f ? '#fff' : C.muted }}>{f}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -178,55 +167,16 @@ const { sessions, deleteSession } = useSession();
       {/* List */}
       {filtered.length === 0 ? (
         <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+          <Text style={{ fontSize: 28, marginBottom: 12 }}>📋</Text>
           <Text style={{ fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 8 }}>No sessions found</Text>
           <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center' }}>
             {filter !== 'All' ? `No ${filter.toLowerCase()} sessions yet` : 'Complete a focus session to see it here'}
           </Text>
         </View>
       ) : (
-        filtered.map(s => <SessionCard key={s.id} session={s} onDelete={deleteSession} />)
+        filtered.map(s => <SessionCard key={s.id} session={s} onDelete={deleteSession} C={C} />)
       )}
 
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen:  { flex: 1, backgroundColor: C.bg },
-  content: { padding: 20, paddingBottom: 100 },
-
-  header:      { marginBottom: 20, paddingTop: 8 },
-  headerSub:   { fontSize: 12, color: C.muted, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 2 },
-  headerTitle: { fontSize: 26, fontWeight: '800', color: C.text },
-
-  banner: { borderRadius: 20, padding: 20, flexDirection: 'row', marginBottom: 16, alignItems: 'center' },
-
-  searchBar:   { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 14, height: 48, marginBottom: 14, borderWidth: 1, borderColor: C.border },
-  searchInput: { flex: 1, fontSize: 14, color: C.text },
-
-  filterRow:    { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  filterTab:    { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 12, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
-  filterTabTxt: { fontSize: 13, fontWeight: '600', color: C.muted },
-
-  sessionCard: { flexDirection: 'row', backgroundColor: C.card, borderRadius: 16, marginBottom: 10, overflow: 'hidden', borderWidth: 1, borderColor: C.border },
-  cardAccent:  { width: 4 },
-  cardBody:    { flex: 1, padding: 14 },
-
-  cardTop:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  subjectBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10 },
-  subjectIcon:  { fontSize: 14 },
-  subjectName:  { fontSize: 12, fontWeight: '700' },
-  statusPill:   { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10 },
-  statusDot:    { width: 6, height: 6, borderRadius: 3 },
-  statusText:   { fontSize: 11, fontWeight: '700' },
-
-  durationNum: { fontSize: 24, fontWeight: '800', color: C.text },
-
-  chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 },
-  chip:     { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8 },
-  chipDot:  { width: 7, height: 7, borderRadius: 4 },
-  chipText: { fontSize: 11, fontWeight: '600' },
-  diffDot:  { width: 7, height: 7, borderRadius: 4, marginHorizontal: 1 },
-
-  notes: { fontSize: 12, color: C.subtext, fontStyle: 'italic', lineHeight: 16 },
-});

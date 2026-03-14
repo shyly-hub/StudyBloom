@@ -1,17 +1,6 @@
 
-import { C as ColorPalette } from './colors';
-import * as Constants from './constants';
-
-export * from './constants';     // SUBJECTS, MOODS, SCORE_RULES, DISTRACTIONS,
-                                 // QUIT_REASONS, GOALS, STUDY_TIMES, EDU_LEVELS,
-                                 // DAYS_SHORT, SUBJECT_ICONS, sColor, sBg
-
-// Named C export
-export const C = ColorPalette;
-
-// Convenience named exports (used directly in screens)
-export const SUBJECTS    = Constants.SUBJECTS;
-export const MOODS       = Constants.MOODS;
-export const SCORE_RULES = Constants.SCORE_RULES;
-
-export default ColorPalette;
+export * from './constants';
+export { C, setDarkMode, isDark, LIGHT_COLORS, DARK_COLORS } from './colors';
+export const SUBJECTS    = ['Math','Science','English','History','Coding','Other'];
+export const MOODS       = ['😫','😐','🙂','😊','🔥'];
+export const SCORE_RULES = { COMPLETE_SESSION:+10, COMPLETE_NO_DISTRACT:+5, QUIT_EARLY:-5, STUDIED_ON_TIME:+3, MISSED_PLANNED_TIME:-3 };

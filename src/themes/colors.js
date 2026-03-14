@@ -1,54 +1,110 @@
 
-export const C = {
+// ── Light palette ─────────────────────────
+export const LIGHT_COLORS = {
+  bg:           '#faf8f0',
+  bgWhite:      '#ffffff',
+  card:         '#ffffff',
+  border:       '#ede8d8',
+  bgAlt:        '#f5f2e8',
+  bgRaised:     '#f0ece0',
+  bgHover:      '#eae5d4',
+  borderBright: '#d8d0bc',
 
-  // ── Backgrounds ──────────────────────────
-  bg:          '#06060a',   // void — main screen background
-  bgWhite:     '#0d0b14',   // "white" surface — card base
-  card:        '#0d0b14',   // card background
-  border:      '#241f38',   // default border
+  // Brand yellow
+  blue:         '#f5c842',
+  blueSoft:     '#fdf3cc',
+  blueDark:     '#e8b020',
 
-  // ── Elevated Surfaces ─────────────────────
-  // (internal use — surface layering)
-  bgRaised:    '#120f1c',   // one step above bg
-  bgHover:     '#1a1628',   // active / pressed state
-  borderBright:'#372f58',   // focused border
+  // Subject pastels
+  purple:       '#c0a0e0',
+  purpleSoft:   '#ede0f8',
+  lavSoft:      '#ede0f8',
+  mint:         '#7dd4b0',
+  mintSoft:     '#d8f5ec',
+  pink:         '#f0a0b8',
+  pinkSoft:     '#fde8ef',
+  peach:        '#f5aa70',
+  peachSoft:    '#fdebd8',
+  yellow:       '#f5c842',
+  yellowSoft:   '#fdf3cc',
 
-  // ── THE ONE POP — Electric Violet ─────────
-  blue:        '#9b5cfc',   // replaces old C.blue — violet neon
-  blueSoft:    'rgba(155,92,252,0.15)',
-  blueDark:    '#5b3fd4',
+  // Status
+  green:        '#3bb88a',
+  greenSoft:    '#d8f5ec',
+  red:          '#e06070',
+  redSoft:      '#fde8ec',
+  orange:       '#e08040',
+  orangeSoft:   '#fdebd8',
 
-  // ── Subject Colors (vivid on dark bg) ─────
-  purple:      '#b07ef8',   // Math — lighter violet
-  purpleSoft:  'rgba(176,126,248,0.14)',
+  // Text
+  text:         '#1a1a1a',
+  muted:        '#7a7060',
+  subtext:      '#b0a898',
 
-  mint:        '#00e5a0',   // Science — electric green
-  mintSoft:    'rgba(0,229,160,0.13)',
-
-  pink:        '#ff6b9d',   // English — hot pink
-  pinkSoft:    'rgba(255,107,157,0.13)',
-
-  peach:       '#ff9a3c',   // History — electric orange
-  peachSoft:   'rgba(255,154,60,0.13)',
-
-  yellow:      '#ffd60a',   // Other — neon yellow
-  yellowSoft:  'rgba(255,214,10,0.12)',
-
-  // ── Status Colors ─────────────────────────
-  green:       '#00e5a0',   // success / completed
-  greenSoft:   'rgba(0,229,160,0.13)',
-  red:         '#ff4d6d',   // error / quit
-  redSoft:     'rgba(255,77,109,0.13)',
-  orange:      '#ff9a3c',   // warning
-  orangeSoft:  'rgba(255,154,60,0.13)',
-
-  // ── Text Colors ───────────────────────────
-  text:        '#eeeaf6',   // primary — warm off-white
-  muted:       '#6e6a85',   // secondary
-  subtext:     '#3d394f',   // placeholder / disabled
-
-  // ── Glow / Shadow ─────────────────────────
-  shadow:      'rgba(155,92,252,0.20)',
-  glow:        'rgba(155,92,252,0.08)',
-
+  // Shadow
+  shadow:       'rgba(26,20,10,0.08)',
+  glow:         'rgba(245,200,66,0.12)',
 };
+
+// ── Dark palette ──────────────────────────
+export const DARK_COLORS = {
+  bg:           '#14120e',
+  bgWhite:      '#221f18',
+  card:         '#221f18',
+  border:       '#383228',
+  bgAlt:        '#1c1a14',
+  bgRaised:     '#2a2720',
+  bgHover:      '#343028',
+  borderBright: '#4a4238',
+
+  // Brand yellow — stays the same in dark
+  blue:         '#f5c842',
+  blueSoft:     'rgba(245,200,66,0.15)',
+  blueDark:     '#e8b020',
+
+  purple:       '#c0a0e0',
+  purpleSoft:   'rgba(192,160,224,0.15)',
+  lavSoft:      'rgba(192,160,224,0.15)',
+  mint:         '#3bd4a0',
+  mintSoft:     'rgba(59,212,160,0.15)',
+  pink:         '#f0a0b8',
+  pinkSoft:     'rgba(240,160,184,0.15)',
+  peach:        '#f5aa70',
+  peachSoft:    'rgba(245,170,112,0.15)',
+  yellow:       '#f5c842',
+  yellowSoft:   'rgba(245,200,66,0.15)',
+
+  green:        '#3bd4a0',
+  greenSoft:    'rgba(59,212,160,0.15)',
+  red:          '#f07080',
+  redSoft:      'rgba(240,112,128,0.15)',
+  orange:       '#f5aa70',
+  orangeSoft:   'rgba(245,170,112,0.15)',
+
+  text:         '#f0ece0',
+  muted:        '#a09078',
+  subtext:      '#605848',
+
+  shadow:       'rgba(0,0,0,0.3)',
+  glow:         'rgba(245,200,66,0.08)',
+};
+
+// ── Runtime dark-mode flag ─────────────────
+let _dark = false;
+
+/** Call this when the user toggles dark mode in Settings */
+export function setDarkMode(on) {
+  _dark = on;
+}
+
+export function isDark() {
+  return _dark;
+}
+
+export const C = new Proxy({}, {
+  get(_, key) {
+    return (_dark ? DARK_COLORS : LIGHT_COLORS)[key];
+  },
+});
+
+export default C;
