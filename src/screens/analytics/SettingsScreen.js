@@ -10,6 +10,7 @@ import { useTheme }           from '../../context/ThemeContext';
 import { useSession }         from '../../context/sessionContext';
 import { GOALS, STUDY_TIMES } from '../../themes';
 
+
 // ── Spring press ──────────────────────────
 function Tap({ onPress, children, style, disabled }) {
   const scale   = useRef(new Animated.Value(1)).current;
@@ -183,17 +184,13 @@ function EditSheet({ visible, currentName, onSave, onClose, C }) {
 // ══════════════════════════════════════════
 //  MAIN SCREEN
 // ══════════════════════════════════════════
-export default function SettingsScreen({ navigation }) {
+export default function SettingsScreen({ navigation }) { 
 
   const { C, dark, toggleDark } = useTheme();
 
-  const auth       = useAuth?.() || {};
-  const user       = auth.user           || null;
-  const userData   = auth.userData       || null;
-  const logout     = auth.logout         || null;
-  const updateUser = auth.updateUserData || null;
-
-  // ✅ get real sessions array from context
+  const { user, userData, logout, updateUserData } = useAuth();
+  const updateUser = updateUserData;
+  
    const { sessions: sessionList, deleteSession } = useSession();
 
   const name     = userData?.name     || user?.displayName || '';
@@ -329,7 +326,7 @@ export default function SettingsScreen({ navigation }) {
         <Text style={{ fontSize: 32, fontWeight: '800', color: C.text, letterSpacing: -1.2, marginBottom: 24 }}>Settings</Text>
 
         {/* Profile card */}
-        <Tap onPress={() => setEditOpen(true)}>
+        <Tap onPress={() => navigation.navigate('Tabs', { screen: 'Profile' })}>
           <View style={{ backgroundColor: C.blue, borderRadius: 22, padding: 18, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 14, overflow: 'hidden', shadowColor: 'rgba(245,200,66,0.4)', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 1, shadowRadius: 18, elevation: 8 }}>
             <View style={{ position: 'absolute', right: -20, top: -20, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             <View style={{ position: 'absolute', right: 40, bottom: -30, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.08)' }} />

@@ -6,7 +6,7 @@ import {
   Dimensions, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient }   from 'expo-linear-gradient';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, onSnapshot } from 'firebase/firestore';
 import { db }               from '../../config/firebase';
 import { useTheme }         from '../../context/ThemeContext';
 import { useAuth }          from '../../hooks/useAuth';
@@ -200,6 +200,24 @@ export default function HomeScreen({ navigation }) {
   const progressPct    = Math.min(1, todayMins / dailyGoal);
   const hours          = Math.round((userData?.totalMinutes || 0) / 60 * 10) / 10;
 
+  // ← Add state for photoURL
+  const [photoURL, setPhotoURL] = useState(userData?.photoURL || null);
+
+  // ← Add this useEffect right after
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setPhotoURL(data.photoURL || null); // updates state when Firestore changes
+      }
+    });
+
+    return () => unsub(); // cleanup on unmount
+  }, [user?.uid]);
+
+
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: C.bg }}
@@ -217,8 +235,21 @@ export default function HomeScreen({ navigation }) {
           </Text>
         </View>
         <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
-          <Avatar name={name} size={46} />
-        </TouchableOpacity>
+  {photoURL ? (
+    <Image
+      source={{ uri: photoURL }}
+      style={{
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        borderWidth: 1,
+        borderColor: C.border,
+      }}
+    />
+  ) : (
+    <Avatar name={name} size={46} />
+  )}
+</TouchableOpacity>
       </View>
 
       {/* ── Score card ──────────────────── */}
