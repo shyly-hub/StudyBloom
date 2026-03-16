@@ -47,40 +47,64 @@ function Tap({ onPress, children, style, disabled }) {
 
 // ── Add-slot bottom sheet ─────────────────
 function AddSlotSheet({ visible, day, hour, onSave, onClose }) {
-  const [subject,  setSubject]  = useState('Math');
+  const [subject, setSubject] = useState('Math');
   const [duration, setDuration] = useState(25);
-  const [label,    setLabel]    = useState('');
-  const [saving,   setSaving]   = useState(false);
-  const slideY  = useRef(new Animated.Value(500)).current;
-  const fadeB   = useRef(new Animated.Value(0)).current;
+  const [label, setLabel] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const slideY = useRef(new Animated.Value(500)).current;
+  const fadeB = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
-      setSubject('Math'); setDuration(25); setLabel('');
+      setSubject('Math'); 
+      setDuration(25); 
+      setLabel('');
+      
       Animated.parallel([
-        Animated.spring(slideY, { toValue: 0,   useNativeDriver: true, tension: 80, friction: 14 }),
-        Animated.timing(fadeB,  { toValue: 1,   duration: 220, useNativeDriver: true }),
+        Animated.timing(slideY, { 
+          toValue: 0, 
+          duration: 250, 
+          useNativeDriver: true 
+        }),
+        Animated.timing(fadeB, { 
+          toValue: 1, 
+          duration: 200, 
+          useNativeDriver: true 
+        }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(slideY, { toValue: 500, duration: 220, useNativeDriver: true }),
-        Animated.timing(fadeB,  { toValue: 0,   duration: 180, useNativeDriver: true }),
+        Animated.timing(slideY, { 
+          toValue: 500, 
+          duration: 200, 
+          useNativeDriver: true 
+        }),
+        Animated.timing(fadeB, { 
+          toValue: 0, 
+          duration: 150, 
+          useNativeDriver: true 
+        }),
       ]).start();
     }
   }, [visible]);
 
   const save = async () => {
+    if (saving) return;
     setSaving(true);
     try {
       await onSave({ subject, duration, label: label.trim() || subject, day, hour });
       onClose();
-    } catch { /* handled upstream */ }
-    finally { setSaving(false); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const hourStr = hour != null
-    ? (hour < 12 ? `${hour}:00 AM` : hour === 12 ? `12:00 PM` : `${hour-12}:00 PM`)
-    : '';
+  const hourStr = hour != null 
+    ? (hour < 12 ? `${hour}:00 AM `: hour === 12 ? `12:00 PM` : `${hour - 12}:00 PM`) 
+    : "";
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
@@ -89,69 +113,59 @@ function AddSlotSheet({ visible, day, hour, onSave, onClose }) {
       </Animated.View>
       <Animated.View style={[s.sheet, { transform: [{ translateY: slideY }] }]}>
         <View style={s.sheetHandle} />
-
         <Text style={s.sheetTitle}>Add Study Slot</Text>
-        <Text style={s.sheetSub}>{FULL_DAYS[DAYS.indexOf(day)] || day}  ·  {hourStr}</Text>
+        <Text style={s.sheetSub}>{day} {hourStr}</Text>
 
-        {/* Subject */}
         <Text style={s.sheetLabel}>SUBJECT</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {SUBJECTS.map(subj => {
               const on = subject === subj;
               return (
-                <Tap key={subj} onPress={() => setSubject(subj)}>
+                <TouchableOpacity key={subj} onPress={() => setSubject(subj)} activeOpacity={0.8}>
                   <View style={[s.subjChip, on && { backgroundColor: sBg(subj), borderColor: sColor(subj) }]}>
-                    <Text style={{ fontSize: 14 }}>{SUBJECT_ICONS[subj] || '📌'}</Text>
+                    <Text style={{ fontSize: 14 }}>{SUBJECT_ICONS[subj] || ''}</Text>
                     <Text style={[s.subjChipText, on && { color: sColor(subj) }]}>{subj}</Text>
                   </View>
-                </Tap>
+                </TouchableOpacity>
               );
             })}
           </View>
         </ScrollView>
 
-        {/* Duration */}
         <Text style={s.sheetLabel}>DURATION</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
           {DURATIONS.map(d => {
             const on = duration === d;
             return (
-              <Tap key={d} onPress={() => setDuration(d)}>
+              <TouchableOpacity key={d} onPress={() => setDuration(d)} activeOpacity={0.8}>
                 <View style={[s.durChip, on && { backgroundColor: C.blueSoft, borderColor: C.blueDark }]}>
                   <Text style={[s.durChipText, on && { color: C.blueDark }]}>{d} min</Text>
                 </View>
-              </Tap>
+              </TouchableOpacity>
             );
           })}
         </View>
 
-        {/* Optional label */}
-        <Text style={s.sheetLabel}>LABEL (optional)</Text>
+        <Text style={s.sheetLabel}>LABEL</Text>
         <View style={s.inputWrap}>
           <TextInput
             style={s.input}
             value={label}
             onChangeText={setLabel}
-            placeholder={`e.g. "Chapter 4 review"`}
+            placeholder='e.g. "Review lesson"'
             placeholderTextColor={C.subtext}
             maxLength={40}
-            returnKeyType="done"
           />
         </View>
-
-        <Tap onPress={save} disabled={saving}>
+          <TouchableOpacity onPress={save} disabled={saving} activeOpacity={0.8}>
           <LinearGradient
             colors={saving ? [C.subtext, C.muted] : ['#f5c842', '#e8b020']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={s.saveBtn}
           >
-            {saving
-              ? <ActivityIndicator color="#2a2000" size="small" />
-              : <Text style={s.saveBtnText}>Add to Schedule</Text>
-            }
+            {saving ? <ActivityIndicator color="#2a2000" /> : <Text style={s.saveBtnText}>Add to Schedule</Text>}
           </LinearGradient>
-        </Tap>
+        </TouchableOpacity>
       </Animated.View>
     </Modal>
   );
@@ -474,11 +488,18 @@ export default function ScheduleScreen({ navigation }) {
       )}
 
       {/* ── FAB — add slot for selected day ── */}
-      <Tap onPress={() => openSheet(selectedDay, 8)} style={s.fab}>
-        <LinearGradient colors={['#f5c842','#e8b020']} start={{ x:0, y:0 }} end={{ x:1, y:1 }} style={s.fabInner}>
+      <TouchableOpacity 
+        onPress={() => openSheet(selectedDay, 8)} 
+        style={s.fab}
+        activeOpacity={0.7}
+      >
+        <LinearGradient 
+          colors={['#f5c842', '#e8b020']} 
+          style={s.fabInner}
+        >
           <Text style={s.fabIcon}>+</Text>
         </LinearGradient>
-      </Tap>
+      </TouchableOpacity>
 
       {/* ── Bottom sheet ─────────────────── */}
       <AddSlotSheet
