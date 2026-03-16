@@ -1,6 +1,6 @@
 // src/screens/analytics/WeeklyReportScreen.js
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Image } from 'react-native';
 import { LinearGradient }  from 'expo-linear-gradient';
 import { useTheme }        from '../../context/ThemeContext';
 import { sColor, sBg, SUBJECT_ICONS } from '../../themes';
@@ -67,9 +67,11 @@ function SubjectRow({ subject, sessions, C }) {
 
 // ── Main ───────────────────────────────────────────────────────
 export default function WeeklyReportScreen() {
-  const { C }               = useTheme();   // ← LIVE THEME
+  const { C }               = useTheme();   
   const { sessions }        = useSession();
   const { userData }        = useAuth();
+  const avatarId = userData?.avatarId || null;
+  const customAvatar = userData?.customAvatar || null;
 
   const insight    = generateInsight(sessions);
   const score      = userData?.score || userData?.disciplineScore || 72;
@@ -115,7 +117,24 @@ export default function WeeklyReportScreen() {
           <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>Week {weekNumber}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-          <Avatar name={name} size={44} />
+          {customAvatar ? (
+          <Image source={{ uri: customAvatar }}
+            style={{ width: 44, height: 44, borderRadius: 22 }}/>
+            ) : avatarId ? (
+          <Image
+            source={
+              avatarId === 'boy1' ? require('../../../assets/boy1.jpg') :
+              avatarId === 'boy2' ? require('../../../assets/boy2.jpg') :
+              avatarId === 'boy3' ? require('../../../assets/boy3.jpg') :
+              avatarId === 'girl1' ? require('../../../assets/girl1.jpg') :
+              avatarId === 'girl2' ? require('../../../assets/girl2.jpg') :
+              avatarId === 'girl3' ? require('../../../assets/girl3.jpg') :
+              avatarId === 'girl4' ? require('../../../assets/girl4.jpg') :
+              null
+            }
+            style={{ width: 44, height: 44, borderRadius: 22}}/>
+            ) : (
+            <Avatar name={name} size={44} /> )}
           <View>
             <Text style={{ fontSize: 16, fontWeight: '800', color: '#fff' }}>{name}</Text>
             <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>{userData?.goal || 'Student'}</Text>

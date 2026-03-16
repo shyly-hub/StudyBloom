@@ -1,9 +1,8 @@
 
-
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Dimensions, ActivityIndicator,
+  Dimensions, ActivityIndicator, Image
 } from 'react-native';
 import { LinearGradient }   from 'expo-linear-gradient';
 import { collection, query, where, getDocs, orderBy, doc, onSnapshot } from 'firebase/firestore';
@@ -24,7 +23,6 @@ function getGreeting() {
   return h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening';
 }
 
-// Format seconds → readable string
 function fmtSec(s) {
   if (!s || s < 1) return '0s';
   if (s < 60)  return `${s}s`;
@@ -77,7 +75,6 @@ function ScheduleWidget({ userId, navigation, C }) {
       {loading ? (
         <ActivityIndicator color={C.blue} size="small" style={{ paddingVertical: 12 }} />
       ) : slots.length === 0 ? (
-        /* Empty state — tap to plan */
         <TouchableOpacity onPress={() => navigation.navigate('Schedule')} activeOpacity={0.8}
           style={{ borderRadius: 14, borderWidth: 1.5, borderColor: C.border, borderStyle: 'dashed', paddingVertical: 18, alignItems: 'center', gap: 6, backgroundColor: C.bgRaised }}>
           <Text style={{ fontSize: 22 }}>📅</Text>
@@ -185,7 +182,6 @@ export default function HomeScreen({ navigation }) {
   const [subject,  setSubject]  = useState('Math');
   const [duration, setDuration] = useState(25);
 
-  // Today's total seconds from real sessions
   const todaySeconds = sessions
     .filter(s => {
       if (!s.date) return false;
@@ -199,24 +195,9 @@ export default function HomeScreen({ navigation }) {
   const todayMins      = Math.floor(todaySeconds / 60);
   const progressPct    = Math.min(1, todayMins / dailyGoal);
   const hours          = Math.round((userData?.totalMinutes || 0) / 60 * 10) / 10;
-
-  // ← Add state for photoURL
-  const [photoURL, setPhotoURL] = useState(userData?.photoURL || null);
-
-  // ← Add this useEffect right after
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    const unsub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setPhotoURL(data.photoURL || null); // updates state when Firestore changes
-      }
-    });
-
-    return () => unsub(); // cleanup on unmount
-  }, [user?.uid]);
-
+  
+  const avatarId = userData?.avatarId || null;
+  const customAvatar = userData?.customAvatar || null;
 
   return (
     <ScrollView
@@ -224,32 +205,43 @@ export default function HomeScreen({ navigation }) {
       contentContainerStyle={{ paddingBottom: 110 }}
       showsVerticalScrollIndicator={false}
     >
+
       {/* ── Header ──────────────────────── */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 60, paddingBottom: 8 }}>
+
         <View>
           <Text style={{ fontSize: 10, fontWeight: '700', color: C.blue, letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 }}>
             {getGreeting()} ✨
           </Text>
+
           <Text style={{ fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 }}>
             {name.split(' ')[0]}
           </Text>
         </View>
+
+        {/* PROFILE IMAGE */}
         <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
-  {photoURL ? (
-    <Image
-      source={{ uri: photoURL }}
-      style={{
-        width: 46,
-        height: 46,
-        borderRadius: 23,
-        borderWidth: 1,
-        borderColor: C.border,
-      }}
-    />
-  ) : (
-    <Avatar name={name} size={46} />
-  )}
-</TouchableOpacity>
+          {customAvatar ? (
+          <Image source={{ uri: customAvatar }}
+            style={{width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: C.border,}}/>
+            ) : avatarId ? (
+          <Image
+        source={
+          avatarId === 'boy1' ? require('../../../assets/boy1.jpg') :
+          avatarId === 'boy2' ? require('../../../assets/boy2.jpg') :
+          avatarId === 'boy3' ? require('../../../assets/boy3.jpg') :
+          avatarId === 'girl1' ? require('../../../assets/girl1.jpg') :
+          avatarId === 'girl2' ? require('../../../assets/girl2.jpg') :
+          avatarId === 'girl3' ? require('../../../assets/girl3.jpg') :
+          avatarId === 'girl4' ? require('../../../assets/girl4.jpg') :
+          null
+        }
+        style={{
+          width: 46, height: 46, borderRadius: 23, borderWidth: 1, borderColor: C.border,}}/>
+          ) : (
+          <Avatar name={name} size={46} />
+        )}
+      </TouchableOpacity>
       </View>
 
       {/* ── Score card ──────────────────── */}

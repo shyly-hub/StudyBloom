@@ -195,7 +195,8 @@ export default function SettingsScreen({ navigation }) {
 
   const name     = userData?.name     || user?.displayName || '';
   const email    = userData?.email    || user?.email       || '';
-  const photoURL = userData?.photoURL || user?.photoURL    || null;
+  const customAvatar = userData?.customAvatar || null;
+  const avatarId = userData?.avatarId || null;
   const score    = userData?.score    ?? userData?.disciplineScore ?? 0;
   const streak   = userData?.streak   ?? 0;
 
@@ -206,7 +207,6 @@ export default function SettingsScreen({ navigation }) {
   const [goal,       setGoal]       = useState(userData?.goal       || GOALS?.[0]       || 'Exam Prep');
   const [studyTime,  setStudyTime]  = useState(userData?.studyTime  || STUDY_TIMES?.[2] || 'Night');
   const [dailyHours, setDailyHours] = useState(userData?.dailyHours ?? 2);
-  const [editOpen,   setEditOpen]   = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
 
@@ -331,10 +331,26 @@ export default function SettingsScreen({ navigation }) {
             <View style={{ position: 'absolute', right: -20, top: -20, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.15)' }} />
             <View style={{ position: 'absolute', right: 40, bottom: -30, width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.08)' }} />
             <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' }}>
-              {photoURL
-                ? <Image source={{ uri: photoURL }} style={{ width: 52, height: 52, borderRadius: 26 }} />
-                : <Text style={{ fontSize: 18, fontWeight: '800', color: '#2a2000' }}>{name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?'}</Text>
-              }
+              {customAvatar ? (
+              <Image source={{ uri: customAvatar }} style={{ width: 52, height: 52, borderRadius: 26 }}/>
+                ) : avatarId ? (
+              <Image
+                source={
+                  avatarId === 'boy1' ? require('../../../assets/boy1.jpg') :
+                    avatarId === 'boy2' ? require('../../../assets/boy2.jpg') :
+                    avatarId === 'boy3' ? require('../../../assets/boy3.jpg') :
+                    avatarId === 'girl1' ? require('../../../assets/girl1.jpg') :
+                    avatarId === 'girl2' ? require('../../../assets/girl2.jpg') :
+                    avatarId === 'girl3' ? require('../../../assets/girl3.jpg') :
+                    avatarId === 'girl4' ? require('../../../assets/girl4.jpg') :
+                    null
+                }
+              style={{ width: 52, height: 52, borderRadius: 26 }}/>
+              ) : (
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#2a2000' }}>
+                {name.split(' ').map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '?'}
+              </Text>
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
@@ -434,7 +450,6 @@ export default function SettingsScreen({ navigation }) {
         {/* ACCOUNT */}
         <SLabel C={C}>ACCOUNT</SLabel>
         <View style={{ backgroundColor: C.card, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: C.border, marginBottom: 24, shadowColor: C.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 10, elevation: 2 }}>
-          <Row C={C} icon="✎"  iconBg={C.blueSoft}   label="Edit Name"        sub={name || 'Tap to set name'}       onPress={() => setEditOpen(true)} />
           <Row C={C} icon="📤" iconBg={C.yellowSoft}  label="Export Sessions"  sub={`${sessionList?.length ?? 0} sessions ready`} onPress={handleExport} />
           <Row C={C} icon="🔒" iconBg={C.mintSoft}    label="Privacy Policy"   sub="How we handle your data"         onPress={handlePrivacy} last />
         </View>
@@ -454,8 +469,6 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
       </Animated.ScrollView>
-
-      <EditSheet visible={editOpen} currentName={name} onSave={handleSaveName} onClose={() => setEditOpen(false)} C={C} />
     </View>
   );
 }
