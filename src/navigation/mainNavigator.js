@@ -1,20 +1,22 @@
-
 import React         from 'react';
 import { View, Platform, Image } from 'react-native';
 import { createBottomTabNavigator }    from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator }  from '@react-navigation/native-stack';
 import Svg, { Path, Circle, Rect }     from 'react-native-svg';
 
-import HomeScreen         from '../screens/main/HomeScreen';
-import AnalyticsScreen    from '../screens/analytics/AnalyticsScreen';
-import HistoryScreen      from '../screens/analytics/HistoryScreen';
-import WeeklyReportScreen from '../screens/analytics/WeeklyReportScreen';
-import ProfileScreen      from '../screens/main/ProfileScreen';
-import SettingsScreen     from '../screens/analytics/SettingsScreen';
-import FocusScreen        from '../screens/study/FocusScreen';
-import DistractionScreen  from '../screens/study/DistractionScreen';
-import PostSessionLog     from '../screens/study/PostSessionLog';
-import ScheduleScreen     from '../screens/study/ScheduleScreen';
+import HomeScreen          from '../screens/main/HomeScreen';
+import AnalyticsScreen     from '../screens/analytics/AnalyticsScreen';
+import HistoryScreen       from '../screens/analytics/HistoryScreen';
+import WeeklyReportScreen  from '../screens/analytics/WeeklyReportScreen';
+import AboutScreen         from '../screens/analytics/AboutScreen';
+import PrivacyPolicyScreen from '../screens/analytics/PrivacyPolicyScreen';
+import ProfileScreen       from '../screens/main/ProfileScreen';
+import SettingsScreen      from '../screens/analytics/SettingsScreen';
+import ThemeScreen         from '../screens/analytics/ThemeScreen';       
+import FocusScreen         from '../screens/study/FocusScreen';
+import DistractionScreen   from '../screens/study/DistractionScreen';
+import PostSessionLog      from '../screens/study/PostSessionLog';
+import ScheduleScreen      from '../screens/study/ScheduleScreen';
 
 import { useTheme } from '../context/ThemeContext';
 import { useAuth }  from '../hooks/useAuth';
@@ -39,7 +41,7 @@ function IconStats({ color, filled }) {
     <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
       {filled ? (
         <>
-          <Rect x="3"  y="12" width="4" height="9" rx="1" fill={color} />
+          <Rect x="3"  y="12" width="4" height="9"  rx="1" fill={color} />
           <Rect x="10" y="7"  width="4" height="14" rx="1" fill={color} />
           <Rect x="17" y="3"  width="4" height="18" rx="1" fill={color} />
         </>
@@ -115,41 +117,37 @@ function BottomTabs() {
   const auth     = useAuth?.() || {};
   const photoURL = auth.userData?.photoURL || auth.user?.photoURL || null;
 
-  // Shared screen options — label rendered by React Navigation (no wrap)
   const screenOpts = ({ route }) => ({
-    headerShown: false,
+    headerShown:             false,
     tabBarActiveTintColor:   C.blueDark,
     tabBarInactiveTintColor: C.muted,
     tabBarLabelStyle: {
       fontSize:      11,
       fontWeight:    '600',
       letterSpacing: 0.1,
-      // KEY FIX: force single line, no wrapping
       numberOfLines: 1,
     },
     tabBarStyle: {
-      backgroundColor:  C.card,
-      borderTopWidth:   0.5,
-      borderTopColor:   C.border,
-      height:           Platform.OS === 'ios' ? 84 : 64,
-      paddingBottom:    Platform.OS === 'ios' ? 24 : 8,
-      paddingTop:       8,
-      shadowColor:      '#000',
-      shadowOffset:     { width: 0, height: -2 },
-      shadowOpacity:    0.06,
-      shadowRadius:     8,
-      elevation:        12,
+      backgroundColor: C.card,
+      borderTopWidth:  0.5,
+      borderTopColor:  C.border,
+      height:          Platform.OS === 'ios' ? 84 : 64,
+      paddingBottom:   Platform.OS === 'ios' ? 24 : 8,
+      paddingTop:      8,
+      shadowColor:     '#000',
+      shadowOffset:    { width: 0, height: -2 },
+      shadowOpacity:   0.06,
+      shadowRadius:    8,
+      elevation:       12,
     },
-    // Each tab item gets equal flex so labels never overflow
     tabBarItemStyle: {
-      flex:     1,
+      flex:              1,
       paddingHorizontal: 0,
     },
   });
 
   return (
     <Tab.Navigator screenOptions={screenOpts}>
-
       <Tab.Screen
         name="Home"
         component={HomeScreen}
@@ -158,7 +156,6 @@ function BottomTabs() {
           tabBarIcon:  ({ focused, color }) => <IconHome    color={color} filled={focused} />,
         }}
       />
-
       <Tab.Screen
         name="Stats"
         component={AnalyticsScreen}
@@ -167,7 +164,6 @@ function BottomTabs() {
           tabBarIcon:  ({ focused, color }) => <IconStats   color={color} filled={focused} />,
         }}
       />
-
       <Tab.Screen
         name="History"
         component={HistoryScreen}
@@ -176,7 +172,6 @@ function BottomTabs() {
           tabBarIcon:  ({ focused, color }) => <IconHistory color={color} filled={focused} />,
         }}
       />
-
       <Tab.Screen
         name="Report"
         component={WeeklyReportScreen}
@@ -185,7 +180,6 @@ function BottomTabs() {
           tabBarIcon:  ({ focused, color }) => <IconReport  color={color} filled={focused} />,
         }}
       />
-
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
@@ -196,7 +190,6 @@ function BottomTabs() {
           ),
         }}
       />
-
     </Tab.Navigator>
   );
 }
@@ -205,12 +198,15 @@ function BottomTabs() {
 export default function MainNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Tabs"        component={BottomTabs}        />
-      <Stack.Screen name="Settings"    component={SettingsScreen}    options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="Schedule"    component={ScheduleScreen}    options={{ animation: 'slide_from_right' }} />
-      <Stack.Screen name="Focus"       component={FocusScreen}       options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
-      <Stack.Screen name="Distraction" component={DistractionScreen} options={{ animation: 'fade', presentation: 'transparentModal' }} />
-      <Stack.Screen name="PostSession" component={PostSessionLog}    options={{ animation: 'fade' }} />
+      <Stack.Screen name="Tabs"          component={BottomTabs}         />
+      <Stack.Screen name="Settings"      component={SettingsScreen}     options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Theme"         component={ThemeScreen}        options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Schedule"      component={ScheduleScreen}     options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="Focus"         component={FocusScreen}        options={{ animation: 'fade', presentation: 'fullScreenModal' }} />
+      <Stack.Screen name="Distraction"   component={DistractionScreen}  options={{ animation: 'fade', presentation: 'transparentModal' }} />
+      <Stack.Screen name="PostSession"   component={PostSessionLog}     options={{ animation: 'fade' }} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="About"         component={AboutScreen}        options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
