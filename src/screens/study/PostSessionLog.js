@@ -4,7 +4,7 @@ import {
   View, Text, ScrollView, Platform,
   TouchableOpacity, TextInput, Alert,
   ActivityIndicator, Animated, Pressable,
-  Dimensions,
+  Dimensions, KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient }   from 'expo-linear-gradient';
 import {
@@ -413,7 +413,11 @@ export default function PostSessionLog({ navigation, route }) {
 
   // ── Log form ──────────────────────────────
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: C.bg }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+    >
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 36, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
@@ -749,6 +753,6 @@ export default function PostSessionLog({ navigation, route }) {
           </LinearGradient>
         </ScalePress>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }

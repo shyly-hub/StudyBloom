@@ -1,9 +1,8 @@
 // src/screens/analytics/WeeklyReportScreen.js
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { View, Text, ScrollView, Animated, Image, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, Animated, Image, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView }        from 'react-native-safe-area-context';
 import { LinearGradient }  from 'expo-linear-gradient';
-import { BlurView }        from 'expo-blur';
 import Svg, { Circle }     from 'react-native-svg';
 import { useTheme }        from '../../context/ThemeContext';
 import { useSession }      from '../../context/sessionContext';
@@ -194,12 +193,12 @@ function calcFocusConsistency(sessions) {
 //  MAIN SCREEN
 // ══════════════════════════════════════════════════════════════════
 export default function WeeklyReportScreen() {
-  const { C }                      = useTheme();
-  const { sessions: rawSessions }  = useSession();
-  const auth                       = useAuth?.() || {};
-  const userData                   = auth.userData || null;
+  const { C, dark }                                        = useTheme();
+  const { sessions: rawSessions, loading: sessionsLoading } = useSession();
+  const auth                                       = useAuth?.() || {};
+  const userData                                   = auth.userData || null;
 
-  // FIX: guard against undefined sessions
+  // Guard against undefined sessions
   const sessions = rawSessions || [];
 
   const name         = userData?.name || 'Student';
@@ -211,12 +210,9 @@ export default function WeeklyReportScreen() {
   const monthName    = new Date().toLocaleString('default', { month: 'long' });
 
   // Every saved session counts toward unlocking the report and populating metrics.
-  // getValidSessions (>= 60s) is still used for score-based metrics like stability,
-  // but the report gate and session count use ALL sessions.
-  const allSessions    = sessions;
-  const validSessions  = useMemo(() => getValidSessions(sessions), [sessions]);
+  const allSessions   = sessions;
+  const validSessions = useMemo(() => getValidSessions(sessions), [sessions]);
 
-  // Use all sessions for report gating so every session counts
   const insight          = useMemo(() => generateInsight(allSessions), [allSessions]);
   const completedCount   = allSessions.filter(s => s.completed).length;
   const completePct      = insight.completePct;
@@ -231,9 +227,11 @@ export default function WeeklyReportScreen() {
     return g;
   }, [allSessions]);
 
-  // Gate uses total sessions — every session counts toward unlock
+  // CRITICAL: don't evaluate the gate until Firestore has responded.
+  // On Android the snapshot can take 300–800ms; without this guard the screen
+  // flashes "0/3 locked" even when the user has plenty of sessions.
   const sessionsRemaining = Math.max(0, MIN_SESSIONS - allSessions.length);
-  const hasEnoughData     = allSessions.length >= MIN_SESSIONS;
+  const hasEnoughData     = !sessionsLoading && allSessions.length >= MIN_SESSIONS;
 
   // FIX: RECS inside useMemo so C values are always current
   const RECS = useMemo(() => [
@@ -251,204 +249,312 @@ export default function WeeklyReportScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: dark ? C.bg : '#F5F0E8' }} edges={['top']}>
+
+    {/* ── Screen background — cream matching Home screen ── */}
+    {!dark && (
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#F5F0E8' }} />
+    )}
+
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.bg }}
-      contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header */}
-      <View style={{ marginBottom: 24, paddingTop: 8 }}>
-        <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
-          Week {weekNumber} · {monthName}
+
+      {/* ── Profile-style mesh gradient header ── */}
+      <LinearGradient
+        colors={['#F5A623', '#A8D8A8', '#C3A8D8', '#87CEEB']}
+        locations={[0, 0.35, 0.7, 1]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={{ paddingTop: 28, paddingBottom: 32, paddingHorizontal: 20, marginBottom: -16 }}
+      >
+        <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
+          {/* Week {weekNumber} · {monthName} */}
         </Text>
-        <Text style={{ fontSize: 28, fontWeight: '800', color: C.text, letterSpacing: -0.8 }}>
-          Weekly Report
+        <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: -0.8 }}>
+          Bloom Report
         </Text>
-      </View>
+      </LinearGradient>
+
+      {/* Content area with horizontal padding */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 28, paddingBottom: 20 }}>
+
+      {/* ── LOADING STATE ────────────────────────────────────── */}
+      {sessionsLoading && (
+        <View style={{ alignItems: 'center', paddingVertical: 80, gap: 16 }}>
+          <ActivityIndicator size="large" color="#10B981" />
+          <Text style={{ fontSize: 13, color: C.muted, letterSpacing: -0.2 }}>
+            Loading your sessions…
+          </Text>
+        </View>
+      )}
 
       {/* ── LOCKED STATE ─────────────────────────────────────── */}
-      {!hasEnoughData ? (
+      {!sessionsLoading && !hasEnoughData && (
         <View>
-          {/* ── Ghost preview cards visible through glass ── */}
-          <View style={{ position: 'relative', marginBottom: 20 }}>
 
-            {/* Faint "Subject Breakdown" ghost card underneath */}
-            <View style={{
-              borderRadius: 20, padding: 20, marginBottom: 12,
-              backgroundColor: C.card,
-              borderWidth: 1, borderColor: C.border,
-              opacity: 0.45,
-            }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 14 }}>Subject Performance</Text>
-              {['Math', 'Science', 'English'].map((subj, i) => (
-                <View key={subj} style={{ marginBottom: 12 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: C.muted }}>{subj}</Text>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: C.muted }}>{[72, 55, 88][i]}%</Text>
-                  </View>
-                  <View style={{ height: 5, borderRadius: 3, backgroundColor: C.bgRaised, overflow: 'hidden' }}>
-                    <View style={{ width: `${[72, 55, 88][i]}%`, height: '100%', borderRadius: 3, backgroundColor: C.border }} />
-                  </View>
-                </View>
-              ))}
-            </View>
+          {/* ── Main analysis card — soft white bento-style ── */}
+          <View style={{
+            borderRadius:    24,
+            overflow:        'hidden',
+            marginBottom:    16,
+            backgroundColor: dark ? C.card : '#FFFFFF',
+            borderWidth:     1,
+            borderColor:     dark ? C.border : 'rgba(0,0,0,0.06)',
+            ...Platform.select({
+              ios: {
+                shadowColor:   '#10B981',
+                shadowOffset:  { width: 0, height: 4 },
+                shadowOpacity: 0.10,
+                shadowRadius:  16,
+              },
+              android: { elevation: 4 },
+            }),
+          }}>
 
-            {/* Faint "Pattern Detection" ghost card underneath */}
-            <View style={{
-              borderRadius: 20, padding: 20, marginBottom: 12,
-              backgroundColor: C.card,
-              borderWidth: 1, borderColor: C.border,
-              opacity: 0.4,
-            }}>
-              <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 12 }}>Pattern Detection</Text>
-              {[
-                { label: 'Best Focus Window', w: '80%' },
-                { label: 'Stability Score',   w: '60%' },
-                { label: 'Deep Work Ratio',   w: '45%' },
-              ].map(p => (
-                <View key={p.label} style={{ marginBottom: 10 }}>
-                  <Text style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{p.label}</Text>
-                  <View style={{ height: 6, borderRadius: 3, backgroundColor: C.bgRaised, overflow: 'hidden' }}>
-                    <View style={{ width: p.w, height: '100%', borderRadius: 3, backgroundColor: C.border }} />
-                  </View>
-                </View>
-              ))}
-            </View>
+            {/* Soft green top accent — matches 'Hours' stat color */}
+            <LinearGradient
+              colors={['#10B981', '#34D399', '#6EE7B7']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+              style={{ height: 4, width: '100%' }}
+            />
 
-            {/* ── Glassmorphism overlay ── */}
-            <BlurView
-              intensity={55}
-              tint="default"
-              style={{
-                position:     'absolute',
-                top: 0, left: 0, right: 0, bottom: 0,
-                borderRadius: 20,
-                overflow:     'hidden',
-              }}
-            >
-              {/* Frosted tint layer */}
+            <View style={{ alignItems: 'center', paddingHorizontal: 28, paddingTop: 28, paddingBottom: 28 }}>
+
+              {/* Avatar with soft green ring */}
               <View style={{
-                flex:            1,
-                backgroundColor: 'rgba(255,255,255,0.08)',
-                borderRadius:    20,
-                borderWidth:     1,
-                borderColor:     'rgba(255,255,255,0.18)',
-                alignItems:      'center',
-                justifyContent:  'center',
-                padding:         28,
+                marginBottom: 14,
+                ...Platform.select({
+                  ios: { shadowColor: '#10B981', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 10 },
+                  android: { elevation: 3 },
+                }),
               }}>
-                {/* Avatar */}
-                <View style={{ marginBottom: 14 }}>
-                  {avatarSource
-                    ? <Image source={avatarSource} style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: 'rgba(245,200,66,0.5)' }} />
-                    : <Avatar name={name} size={56} />
-                  }
-                </View>
+                {avatarSource
+                  ? <Image source={avatarSource} style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, borderColor: '#10B981' }} />
+                  : <Avatar name={name} size={64} />
+                }
+              </View>
 
-                <Text style={{ fontSize: 20, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.4, marginBottom: 6 }}>
-                  Hi, {name}! 👋
-                </Text>
-
-                {/* Lock icon */}
-                <View style={{
-                  width: 52, height: 52, borderRadius: 26,
-                  backgroundColor: 'rgba(245,200,66,0.15)',
-                  borderWidth: 1.5, borderColor: 'rgba(245,200,66,0.4)',
-                  alignItems: 'center', justifyContent: 'center',
-                  marginBottom: 14,
+              {/* ── Greeting — charcoal for light bg readability (Fix 5) ── */}
+              <View style={{ alignItems: 'center', marginBottom: 20 }}>
+                <Text style={{
+                  fontSize:      9,
+                  fontWeight:    '800',
+                  letterSpacing: 3,
+                  textTransform: 'uppercase',
+                  color:         '#10B981',
+                  marginBottom:  6,
                 }}>
-                  <Text style={{ fontSize: 24 }}>🔒</Text>
-                </View>
-
-                <Text style={{ fontSize: 15, fontWeight: '700', color: '#f5c842', textAlign: 'center', marginBottom: 8 }}>
-                  MirrorMind Analysis Locked
+                  🌱 Growth Insights
                 </Text>
-                <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
-                  Complete{' '}
-                  <Text style={{ fontWeight: '800', color: '#f5c842' }}>
-                    {sessionsRemaining} more session{sessionsRemaining !== 1 ? 's' : ''}
-                  </Text>
-                  {' '}to unlock your personalized weekly analysis.
-                </Text>
-
-                {/* ── GRADIENT progress bar (was solid yellow) ── */}
-                <View style={{ width: '100%', marginBottom: 6 }}>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <Text style={{ fontSize: 11, color: C.muted, fontWeight: '600' }}>
-                      {allSessions.length} / {MIN_SESSIONS} sessions
-                    </Text>
-                    <Text style={{ fontSize: 11, color: '#f5c842', fontWeight: '700' }}>
-                      {Math.round((allSessions.length / MIN_SESSIONS) * 100)}%
-                    </Text>
-                  </View>
-                  <View style={{ height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
-                    <LinearGradient
-                      colors={['#FFD700', '#FFA500']}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                      style={{ width: `${Math.min((allSessions.length / MIN_SESSIONS) * 100, 100)}%`, height: '100%', borderRadius: 4 }}
-                    />
-                  </View>
-                </View>
-
-                {/* ── Micro-copy ── */}
-                <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center', fontStyle: 'italic', marginBottom: 4, lineHeight: 16 }}>
-                  Unlock to see which time of day you are most productive.
-                </Text>
-                <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center' }}>
-                  {sessionsRemaining === 0 ? 'Unlocking...' : `${sessionsRemaining} more to go`}
+                <Text style={{
+                  fontSize:      20,
+                  fontWeight:    '800',
+                  color:         dark ? C.text : '#1C1917',
+                  textAlign:     'center',
+                  letterSpacing: -0.5,
+                  lineHeight:    28,
+                }}>
+                  Awaiting Data,{'\n'}{name}...
                 </Text>
               </View>
-            </BlurView>
+
+              {/* Seedling icon — replaces lock, matches nature rank theme (Fix 3) */}
+              <View style={{
+                width:           54,
+                height:          54,
+                borderRadius:    27,
+                alignItems:      'center',
+                justifyContent:  'center',
+                marginBottom:    14,
+                backgroundColor: 'rgba(16,185,129,0.12)',
+                borderWidth:     1.5,
+                borderColor:     'rgba(16,185,129,0.35)',
+              }}>
+                <Text style={{ fontSize: 26 }}>🌱</Text>
+              </View>
+
+              <Text style={{
+                fontSize:      15,
+                fontWeight:    '800',
+                color:         dark ? C.text : '#1C1917',
+                textAlign:     'center',
+                marginBottom:  6,
+                letterSpacing: -0.3,
+              }}>
+                Analysis Locked
+              </Text>
+              <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center', lineHeight: 20, marginBottom: 22 }}>
+                Complete{' '}
+                <Text style={{ fontWeight: '800', color: '#10B981' }}>
+                  {sessionsRemaining} more session{sessionsRemaining !== 1 ? 's' : ''}
+                </Text>
+                {' '}to unlock your weekly analysis.
+              </Text>
+
+              {/* ── Soft-green growth progress bar (Fix 3) ── */}
+              <View style={{ width: '100%', marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 11, color: C.muted, fontWeight: '600' }}>
+                    {allSessions.length} / {MIN_SESSIONS} sessions
+                  </Text>
+                  <Text style={{
+                    fontSize:   11,
+                    fontWeight: '800',
+                    color:      allSessions.length > 0 ? '#10B981' : C.muted,
+                  }}>
+                    {Math.round((allSessions.length / MIN_SESSIONS) * 100)}%
+                  </Text>
+                </View>
+                {/* Track */}
+                <View style={{
+                  height:          8,
+                  backgroundColor: 'rgba(16,185,129,0.12)',
+                  borderRadius:    4,
+                  overflow:        'hidden',
+                }}>
+                  {allSessions.length > 0 && (
+                    <LinearGradient
+                      colors={['#10B981', '#34D399']}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={{
+                        width:        `${Math.min((allSessions.length / MIN_SESSIONS) * 100, 100)}%`,
+                        height:       '100%',
+                        borderRadius: 4,
+                        ...Platform.select({
+                          ios: { shadowColor: '#10B981', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 6 },
+                        }),
+                      }}
+                    />
+                  )}
+                </View>
+              </View>
+
+              <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center', fontStyle: 'italic', lineHeight: 16, marginBottom: 4 }}>
+                Unlock to see which time of day you are most productive.
+              </Text>
+              <Text style={{
+                fontSize:   11,
+                fontWeight: '700',
+                color:      '#10B981',
+                textAlign:  'center',
+              }}>
+                {sessionsRemaining === 0 ? 'Unlocking...' : `🌱 ${sessionsRemaining} more to go`}
+              </Text>
+            </View>
           </View>
 
-          {/* What you'll unlock — items dimmed to reinforce locked state */}
-          <View style={card}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 16 }}>What you'll unlock 🚀</Text>
+          {/* ── What you'll unlock — bento-box micro-cards (Fix 4) ── */}
+          <View style={{
+            backgroundColor: dark ? C.card : '#FFFFFF',
+            borderRadius:    20,
+            padding:         18,
+            marginBottom:    12,
+            borderWidth:     1,
+            borderColor:     dark ? C.border : 'rgba(0,0,0,0.06)',
+            ...Platform.select({
+              ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10 },
+              android: { elevation: 2 },
+            }),
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: dark ? C.text : '#1C1917', marginBottom: 14, letterSpacing: -0.3 }}>
+              What you'll unlock 🚀
+            </Text>
             {[
-              { icon: '📊', label: 'Performance Scores',   desc: 'Discipline, Stability, Focus gauges'      },
-              { icon: '🧠', label: 'AI Pattern Detection', desc: 'Personalized study insights'              },
-              { icon: '📈', label: 'Subject Breakdown',    desc: 'Time & score per subject'                 },
-              { icon: '🎯', label: 'Weekly Target',        desc: 'Goal tracking with gradient progress bar' },
+              { icon: '📊', label: 'Performance Scores',   desc: 'Discipline, Stability, Focus gauges',       color: '#10B981' },
+              { icon: '🧠', label: 'AI Pattern Detection', desc: 'Personalized study insights',               color: '#3B82F6' },
+              { icon: '📈', label: 'Subject Breakdown',    desc: 'Time & score per subject',                  color: '#F59E0B' },
+              { icon: '🎯', label: 'Weekly Target',        desc: 'Goal tracking with gradient progress bar',  color: '#EC4899' },
             ].map((item, i, arr) => (
               <View key={i} style={{
-                flexDirection: 'row', alignItems: 'center', gap: 12,
-                marginBottom: i < arr.length - 1 ? 14 : 0,
-                opacity: 0.5,   // reinforces locked status
+                flexDirection:     'row',
+                alignItems:        'center',
+                gap:               12,
+                marginBottom:      i < arr.length - 1 ? 8 : 0,
+                paddingVertical:   12,
+                paddingHorizontal: 14,
+                borderRadius:      16,
+                borderWidth:       1,
+                borderColor:       dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+                backgroundColor:   dark ? 'rgba(255,255,255,0.03)' : '#FAFAF9',
+                ...Platform.select({
+                  ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4 },
+                  android: { elevation: 1 },
+                }),
               }}>
-                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.bgRaised, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 18 }}>{item.icon}</Text>
+                {/* Fix 5: exact 40×40 — all icons uniformly sized */}
+                <View style={{
+                  width:           40,
+                  height:          40,
+                  borderRadius:    12,
+                  alignItems:      'center',
+                  justifyContent:  'center',
+                  flexShrink:      0,
+                  backgroundColor: item.color + '18',
+                }}>
+                  <Text style={{ fontSize: 18, lineHeight: 22, textAlign: 'center' }}>{item.icon}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: C.text }}>{item.label}</Text>
-                  <Text style={{ fontSize: 11, color: C.muted, lineHeight: 16 }}>{item.desc}</Text>
+                  <Text style={{
+                    fontSize:      13,
+                    fontWeight:    '700',
+                    color:         dark ? 'rgba(255,255,255,0.60)' : 'rgba(28,25,23,0.65)',
+                    letterSpacing: -0.2,
+                  }}>
+                    {item.label}
+                  </Text>
+                  <Text style={{
+                    fontSize:   11,
+                    color:      dark ? 'rgba(255,255,255,0.35)' : 'rgba(28,25,23,0.42)',
+                    lineHeight: 16,
+                    marginTop:  2,
+                  }}>
+                    {item.desc}
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 14 }}>🔒</Text>
+                {/* Fix 3: flower bud replaces lock icon */}
+                <Text style={{ fontSize: 14, flexShrink: 0, opacity: 0.5 }}></Text>
               </View>
             ))}
           </View>
 
           {/* Tips */}
-          <View style={card}>
-            <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 14 }}>Tips to get started 💡</Text>
+          <View style={{
+            backgroundColor: dark ? C.card : '#FFFFFF',
+            borderRadius:    20,
+            padding:         18,
+            marginBottom:    12,
+            borderWidth:     1,
+            borderColor:     dark ? C.border : 'rgba(0,0,0,0.06)',
+            ...Platform.select({
+              ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 10 },
+              android: { elevation: 2 },
+            }),
+          }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: dark ? C.text : '#1C1917', marginBottom: 14 }}>Tips to get started 💡</Text>
             {[
               'Start with a 25-minute session today',
               'Log how you feel after each session',
               'Try to complete sessions without distractions',
             ].map((tip, i, arr) => (
               <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: i < arr.length - 1 ? 12 : 0 }}>
-                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: C.blueSoft, alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                  <Text style={{ fontSize: 10, fontWeight: '800', color: C.blueDark }}>{i + 1}</Text>
+                <View style={{
+                  width: 22, height: 22, borderRadius: 11,
+                  backgroundColor: 'rgba(16,185,129,0.15)',
+                  alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1,
+                }}>
+                  <Text style={{ fontSize: 10, fontWeight: '800', color: '#10B981' }}>{i + 1}</Text>
                 </View>
                 <Text style={{ flex: 1, fontSize: 13, color: C.muted, lineHeight: 19 }}>{tip}</Text>
               </View>
             ))}
           </View>
         </View>
+      )}
 
-      ) : (
-
-        /* ── FULL REPORT ─────────────────────────────────────── */
+      {/* ── FULL REPORT ─────────────────────────────────────── */}
+      {!sessionsLoading && hasEnoughData && (
         <View>
 
           {/* System Analysis */}
@@ -590,6 +696,8 @@ export default function WeeklyReportScreen() {
 
         </View>
       )}
+
+      </View>{/* end paddingHorizontal wrapper */}
     </ScrollView>
     </SafeAreaView>
   );

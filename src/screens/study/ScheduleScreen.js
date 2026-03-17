@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, Animated,
   Modal, Pressable, Platform, TextInput, Dimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient }       from 'expo-linear-gradient';
 import {
@@ -66,82 +66,132 @@ function AddSlotSheet({ visible, day, onSave, onClose, C }) {
     finally { setSaving(false); }
   };
 
-  const hourLabel = hour < 12 ? `${hour}:00 AM` : hour === 12 ? '12:00 PM' : `${hour-12}:00 PM`;
   const HOUR_OPTS = [6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22];
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View style={{ ...{ position:'absolute',top:0,left:0,right:0,bottom:0 }, backgroundColor:'rgba(0,0,0,0.45)', opacity: fadeB }}>
+      {/* Backdrop */}
+      <Animated.View style={{
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.45)', opacity: fadeB,
+      }}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
       </Animated.View>
-      <Animated.View style={{ position:'absolute', bottom:0, left:0, right:0, backgroundColor: C.card, borderTopLeftRadius:28, borderTopRightRadius:28, borderTopWidth:1, borderTopColor:C.border, padding:22, paddingBottom: Platform.OS==='ios' ? 44 : 32, transform:[{ translateY: slideY }] }}>
-        <View style={{ width:36,height:4,borderRadius:2,backgroundColor:C.border,alignSelf:'center',marginBottom:20 }} />
-        <Text style={{ fontSize:20,fontWeight:'800',color:C.text,marginBottom:4 }}>Add Study Slot</Text>
-        <Text style={{ fontSize:12,color:C.muted,marginBottom:18 }}>{DAYS_FULL[DAYS_SHORT.indexOf(day)] || day}</Text>
 
-        {/* Subject */}
-        <Text style={{ fontSize:8,fontWeight:'800',color:C.muted,letterSpacing:2,textTransform:'uppercase',marginBottom:8 }}>SUBJECT</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:16 }}>
-          <View style={{ flexDirection:'row',gap:8 }}>
-            {SUBJECTS.map(subj => {
-              const on = subject === subj;
-              return (
-                <Tap key={subj} onPress={() => setSubject(subj)}>
-                  <View style={{ flexDirection:'row',alignItems:'center',gap:6,paddingVertical:9,paddingHorizontal:13,borderRadius:14, backgroundColor: on ? sBg(subj) : C.bgRaised, borderWidth:1.5, borderColor: on ? sColor(subj) : C.border }}>
-                    <Text style={{ fontSize:14 }}>{SUBJECT_ICONS[subj]||'📌'}</Text>
-                    <Text style={{ fontSize:12,fontWeight:'700',color: on ? sColor(subj) : C.muted }}>{subj}</Text>
-                  </View>
-                </Tap>
-              );
-            })}
+      {/* KeyboardAvoidingView pushes the sheet up when keyboard appears */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}
+        keyboardVerticalOffset={0}
+      >
+        <Animated.View style={{
+          backgroundColor:     C.card,
+          borderTopLeftRadius:  28,
+          borderTopRightRadius: 28,
+          borderTopWidth:       1,
+          borderTopColor:       C.border,
+          // Max height so it doesn't fill the whole screen on tall phones
+          maxHeight:            '90%',
+          transform:            [{ translateY: slideY }],
+        }}>
+          {/* Drag handle — always visible above the scroll */}
+          <View style={{ paddingHorizontal: 22, paddingTop: 14, paddingBottom: 4 }}>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 16 }} />
+            <Text style={{ fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 2 }}>Add Study Slot</Text>
+            <Text style={{ fontSize: 12, color: C.muted, marginBottom: 14 }}>{DAYS_FULL[DAYS_SHORT.indexOf(day)] || day}</Text>
           </View>
-        </ScrollView>
 
-        {/* Duration */}
-        <Text style={{ fontSize:8,fontWeight:'800',color:C.muted,letterSpacing:2,textTransform:'uppercase',marginBottom:8 }}>DURATION</Text>
-        <View style={{ flexDirection:'row',flexWrap:'wrap',gap:8,marginBottom:16 }}>
-          {DURATIONS.map(d => {
-            const on = duration === d;
-            return (
-              <Tap key={d} onPress={() => setDuration(d)}>
-                <View style={{ paddingVertical:8,paddingHorizontal:16,borderRadius:20, backgroundColor: on ? C.blueSoft : C.bgRaised, borderWidth:1.5, borderColor: on ? C.blueDark : C.border }}>
-                  <Text style={{ fontSize:12,fontWeight:'700',color: on ? C.blueDark : C.muted }}>{d} min</Text>
-                </View>
-              </Tap>
-            );
-          })}
-        </View>
+          {/* Scrollable form — scrolls up so label field stays above keyboard */}
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 22,
+              paddingBottom: Platform.OS === 'ios' ? 44 : 32,
+            }}
+          >
+            {/* Subject */}
+            <Text style={{ fontSize: 8, fontWeight: '800', color: C.muted, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>SUBJECT</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {SUBJECTS.map(subj => {
+                  const on = subject === subj;
+                  return (
+                    <Tap key={subj} onPress={() => setSubject(subj)}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 9, paddingHorizontal: 13, borderRadius: 14, backgroundColor: on ? sBg(subj) : C.bgRaised, borderWidth: 1.5, borderColor: on ? sColor(subj) : C.border }}>
+                        <Text style={{ fontSize: 14 }}>{SUBJECT_ICONS[subj] || '📌'}</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: on ? sColor(subj) : C.muted }}>{subj}</Text>
+                      </View>
+                    </Tap>
+                  );
+                })}
+              </View>
+            </ScrollView>
 
-        {/* Time */}
-        <Text style={{ fontSize:8,fontWeight:'800',color:C.muted,letterSpacing:2,textTransform:'uppercase',marginBottom:8 }}>TIME</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom:16 }}>
-          <View style={{ flexDirection:'row',gap:8 }}>
-            {HOUR_OPTS.map(h => {
-              const on = hour === h;
-              const lbl = h < 12 ? `${h}AM` : h===12 ? '12PM' : `${h-12}PM`;
-              return (
-                <Tap key={h} onPress={() => setHour(h)}>
-                  <View style={{ paddingVertical:8,paddingHorizontal:13,borderRadius:20, backgroundColor: on ? C.blueSoft : C.bgRaised, borderWidth:1.5, borderColor: on ? C.blueDark : C.border }}>
-                    <Text style={{ fontSize:11,fontWeight:'700',color: on ? C.blueDark : C.muted }}>{lbl}</Text>
-                  </View>
-                </Tap>
-              );
-            })}
-          </View>
-        </ScrollView>
+            {/* Duration */}
+            <Text style={{ fontSize: 8, fontWeight: '800', color: C.muted, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>DURATION</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+              {DURATIONS.map(d => {
+                const on = duration === d;
+                return (
+                  <Tap key={d} onPress={() => setDuration(d)}>
+                    <View style={{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, backgroundColor: on ? C.blueSoft : C.bgRaised, borderWidth: 1.5, borderColor: on ? C.blueDark : C.border }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: on ? C.blueDark : C.muted }}>{d} min</Text>
+                    </View>
+                  </Tap>
+                );
+              })}
+            </View>
 
-        {/* Label */}
-        <Text style={{ fontSize:8,fontWeight:'800',color:C.muted,letterSpacing:2,textTransform:'uppercase',marginBottom:8 }}>LABEL (optional)</Text>
-        <View style={{ backgroundColor:C.bgRaised,borderRadius:12,borderWidth:1,borderColor:C.border,paddingHorizontal:14,height:46,justifyContent:'center',marginBottom:18 }}>
-          <TextInput style={{ fontSize:14,color:C.text }} value={label} onChangeText={setLabel} placeholder={`e.g. "Chapter 4 review"`} placeholderTextColor={C.subtext} maxLength={40} returnKeyType="done" />
-        </View>
+            {/* Time */}
+            <Text style={{ fontSize: 8, fontWeight: '800', color: C.muted, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>TIME</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} keyboardShouldPersistTaps="handled">
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {HOUR_OPTS.map(h => {
+                  const on  = hour === h;
+                  const lbl = h < 12 ? `${h}AM` : h === 12 ? '12PM' : `${h - 12}PM`;
+                  return (
+                    <Tap key={h} onPress={() => setHour(h)}>
+                      <View style={{ paddingVertical: 8, paddingHorizontal: 13, borderRadius: 20, backgroundColor: on ? C.blueSoft : C.bgRaised, borderWidth: 1.5, borderColor: on ? C.blueDark : C.border }}>
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: on ? C.blueDark : C.muted }}>{lbl}</Text>
+                      </View>
+                    </Tap>
+                  );
+                })}
+              </View>
+            </ScrollView>
 
-        <Tap onPress={save} disabled={saving}>
-          <LinearGradient colors={saving ? [C.muted,C.subtext] : ['#f5c842','#e8b020']} start={{x:0,y:0}} end={{x:1,y:0}} style={{ height:52,borderRadius:14,alignItems:'center',justifyContent:'center' }}>
-            {saving ? <ActivityIndicator color="#2a2000" size="small" /> : <Text style={{ fontSize:15,fontWeight:'800',color:'#2a2000' }}>Add to Schedule</Text>}
-          </LinearGradient>
-        </Tap>
-      </Animated.View>
+            {/* Label — the field that was being hidden */}
+            <Text style={{ fontSize: 8, fontWeight: '800', color: C.muted, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>LABEL (optional)</Text>
+            <View style={{ backgroundColor: C.bgRaised, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, height: 46, justifyContent: 'center', marginBottom: 20 }}>
+              <TextInput
+                style={{ fontSize: 14, color: C.text }}
+                value={label}
+                onChangeText={setLabel}
+                placeholder={`e.g. "Chapter 4 review"`}
+                placeholderTextColor={C.subtext}
+                maxLength={40}
+                returnKeyType="done"
+                onSubmitEditing={save}
+              />
+            </View>
+
+            {/* Save button */}
+            <Tap onPress={save} disabled={saving}>
+              <LinearGradient
+                colors={saving ? [C.muted, C.subtext] : ['#f5c842', '#e8b020']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={{ height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}
+              >
+                {saving
+                  ? <ActivityIndicator color="#2a2000" size="small" />
+                  : <Text style={{ fontSize: 15, fontWeight: '800', color: '#2a2000' }}>Add to Schedule</Text>
+                }
+              </LinearGradient>
+            </Tap>
+          </ScrollView>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -160,7 +210,6 @@ export default function ScheduleScreen({ navigation }) {
   const [loading,    setLoading]    = useState(true);
   const [sheetOpen,  setSheetOpen]  = useState(false);
 
-  // ── Load all slots once ────────────────────────────────────
   const loadSlots = useCallback(async () => {
     if (!uid) { setLoading(false); return; }
     setLoading(true);
@@ -191,10 +240,10 @@ export default function ScheduleScreen({ navigation }) {
     ]);
   };
 
-  const slotsForDay   = (day) => slots.filter(s => s.day === day).sort((a,b) => a.hour - b.hour);
-  const todaySlots    = slotsForDay(selDay);
-  const totalMins     = slots.reduce((a, s) => a + (s.duration||0), 0);
-  const activeDays    = DAYS_SHORT.filter(d => slotsForDay(d).length > 0).length;
+  const slotsForDay = (day) => slots.filter(s => s.day === day).sort((a, b) => a.hour - b.hour);
+  const todaySlots  = slotsForDay(selDay);
+  const totalMins   = slots.reduce((a, s) => a + (s.duration || 0), 0);
+  const activeDays  = DAYS_SHORT.filter(d => slotsForDay(d).length > 0).length;
 
   const card = {
     backgroundColor: C.card, borderRadius: 18, borderWidth: 1, borderColor: C.border,
@@ -207,33 +256,28 @@ export default function ScheduleScreen({ navigation }) {
 
         {/* Header */}
         <View style={{ paddingHorizontal: 20, paddingTop: 56, paddingBottom: 12 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 }}>
-
-            <View>
-              <Text style={{ fontSize:9,fontWeight:'800',color:C.blue,letterSpacing:3,textTransform:'uppercase' }}>Study Planner</Text>
-              <Text style={{ fontSize:24,fontWeight:'800',color:C.text,letterSpacing:-0.5 }}>Schedule</Text>
-            </View>
-          </View>
+          <Text style={{ fontSize: 9, fontWeight: '800', color: C.blue, letterSpacing: 3, textTransform: 'uppercase' }}>Study Planner</Text>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 }}>Schedule</Text>
         </View>
 
-        {/* ── Stats strip ──────────────────────────────────── */}
-        <View style={{ flexDirection:'row', gap:10, paddingHorizontal:20, marginBottom:16 }}>
+        {/* Stats strip */}
+        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, marginBottom: 16 }}>
           {[
-            { val: slots.length,             lbl: 'Scheduled'   },
-            { val: `${totalMins}m`,           lbl: 'Total Time'  },
-            { val: activeDays,               lbl: 'Active Days' },
-          ].map((s,i) => (
-            <View key={i} style={[card, { flex:1, alignItems:'center', paddingVertical:12, paddingHorizontal:8 }]}>
-              <Text style={{ fontSize:18,fontWeight:'800',color:C.text,letterSpacing:-0.3 }}>{s.val}</Text>
-              <Text style={{ fontSize:9,fontWeight:'700',color:C.muted,letterSpacing:0.8,textTransform:'uppercase',marginTop:2 }}>{s.lbl}</Text>
+            { val: slots.length,   lbl: 'Scheduled'   },
+            { val: `${totalMins}m`, lbl: 'Total Time'  },
+            { val: activeDays,     lbl: 'Active Days' },
+          ].map((s, i) => (
+            <View key={i} style={[card, { flex: 1, alignItems: 'center', paddingVertical: 12, paddingHorizontal: 8 }]}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: C.text, letterSpacing: -0.3 }}>{s.val}</Text>
+              <Text style={{ fontSize: 9, fontWeight: '700', color: C.muted, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 2 }}>{s.lbl}</Text>
             </View>
           ))}
         </View>
 
-        {/* ── Horizontal Day Picker ─────────────────────────── */}
+        {/* Day picker */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal:20, gap:10, paddingBottom:4 }}
-          style={{ marginBottom:16 }}>
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 10, paddingBottom: 4 }}
+          style={{ marginBottom: 16 }}>
           {DAYS_SHORT.map((day, i) => {
             const isSelected = day === selDay;
             const isToday    = i === todayIdx;
@@ -241,25 +285,24 @@ export default function ScheduleScreen({ navigation }) {
             return (
               <Tap key={day} onPress={() => setSelDay(day)}>
                 <View style={{
-                  width:62, alignItems:'center', paddingVertical:12,
-                  borderRadius:18,
+                  width: 62, alignItems: 'center', paddingVertical: 12, borderRadius: 18,
                   backgroundColor: isSelected ? C.blue : C.card,
                   borderWidth: isSelected ? 0 : 1.5,
                   borderColor: isToday && !isSelected ? C.blueDark + '80' : C.border,
                   shadowColor: isSelected ? C.blue : 'transparent',
                   shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: isSelected ? 6 : 0,
                 }}>
-                  <Text style={{ fontSize:11, fontWeight:'700', color: isSelected ? '#fff' : isToday ? C.blueDark : C.muted, marginBottom:2 }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: isSelected ? '#fff' : isToday ? C.blueDark : C.muted, marginBottom: 2 }}>
                     {day}
                   </Text>
                   {isToday && (
-                    <Text style={{ fontSize:8, fontWeight:'800', color: isSelected ? 'rgba(255,255,255,0.7)' : C.blue, letterSpacing:0.5 }}>
+                    <Text style={{ fontSize: 8, fontWeight: '800', color: isSelected ? 'rgba(255,255,255,0.7)' : C.blue, letterSpacing: 0.5 }}>
                       TODAY
                     </Text>
                   )}
                   {count > 0 && (
-                    <View style={{ width:18, height:18, borderRadius:9, backgroundColor: isSelected ? 'rgba(255,255,255,0.3)' : C.blue, alignItems:'center', justifyContent:'center', marginTop:4 }}>
-                      <Text style={{ fontSize:9, fontWeight:'900', color: isSelected ? '#fff' : '#2a2000' }}>{count}</Text>
+                    <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: isSelected ? 'rgba(255,255,255,0.3)' : C.blue, alignItems: 'center', justifyContent: 'center', marginTop: 4 }}>
+                      <Text style={{ fontSize: 9, fontWeight: '900', color: isSelected ? '#fff' : '#2a2000' }}>{count}</Text>
                     </View>
                   )}
                 </View>
@@ -268,24 +311,23 @@ export default function ScheduleScreen({ navigation }) {
           })}
         </ScrollView>
 
-        {/* ── Study Cards for selected day ─────────────────── */}
+        {/* Slots for selected day */}
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
-          {/* Day header */}
-          <View style={{ flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-            <View style={{ flexDirection:'row', alignItems:'center', gap:8 }}>
-              <View style={{ width:3, height:16, borderRadius:2, backgroundColor:C.blue }} />
-              <Text style={{ fontSize:16, fontWeight:'700', color:C.text }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 3, height: 16, borderRadius: 2, backgroundColor: C.blue }} />
+              <Text style={{ fontSize: 16, fontWeight: '700', color: C.text }}>
                 {DAYS_FULL[DAYS_SHORT.indexOf(selDay)] || selDay}
               </Text>
               {DAYS_SHORT.indexOf(selDay) === todayIdx && (
-                <View style={{ backgroundColor:C.blueSoft, borderRadius:8, paddingHorizontal:8, paddingVertical:2 }}>
-                  <Text style={{ fontSize:9, fontWeight:'800', color:C.blueDark, letterSpacing:1 }}>TODAY</Text>
+                <View style={{ backgroundColor: C.blueSoft, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 }}>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: C.blueDark, letterSpacing: 1 }}>TODAY</Text>
                 </View>
               )}
             </View>
             {todaySlots.length > 0 && (
-              <Text style={{ fontSize:11, color:C.muted, fontWeight:'600' }}>
-                {todaySlots.reduce((a,s)=>a+(s.duration||0),0)}m planned
+              <Text style={{ fontSize: 11, color: C.muted, fontWeight: '600' }}>
+                {todaySlots.reduce((a, s) => a + (s.duration || 0), 0)}m planned
               </Text>
             )}
           </View>
@@ -293,76 +335,56 @@ export default function ScheduleScreen({ navigation }) {
           {loading ? (
             <ActivityIndicator color={C.blue} style={{ paddingVertical: 30 }} />
           ) : todaySlots.length === 0 ? (
-            /* Empty state */
             <Tap onPress={() => setSheetOpen(true)}>
-              <View style={[card, {
-                paddingVertical:32, alignItems:'center', gap:8,
-                borderStyle:'dashed', borderColor:C.borderBright,
-              }]}>
-                <Text style={{ fontSize:28 }}>📅</Text>
-                <Text style={{ fontSize:14, fontWeight:'700', color:C.text }}>No sessions planned</Text>
-                <Text style={{ fontSize:12, color:C.muted, textAlign:'center', lineHeight:18 }}>
+              <View style={[card, { paddingVertical: 32, alignItems: 'center', gap: 8, borderStyle: 'dashed', borderColor: C.borderBright }]}>
+                <Text style={{ fontSize: 28 }}>📅</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: C.text }}>No sessions planned</Text>
+                <Text style={{ fontSize: 12, color: C.muted, textAlign: 'center', lineHeight: 18 }}>
                   Tap to add your study plan{'\n'}for {DAYS_FULL[DAYS_SHORT.indexOf(selDay)] || selDay}
                 </Text>
-                <View style={{ backgroundColor:C.blueSoft, borderRadius:20, paddingVertical:8, paddingHorizontal:18, marginTop:4 }}>
-                  <Text style={{ fontSize:13, fontWeight:'700', color:C.blueDark }}>+ Plan {selDay}</Text>
+                <View style={{ backgroundColor: C.blueSoft, borderRadius: 20, paddingVertical: 8, paddingHorizontal: 18, marginTop: 4 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: C.blueDark }}>+ Plan {selDay}</Text>
                 </View>
               </View>
             </Tap>
           ) : (
-            <View style={{ gap:10 }}>
+            <View style={{ gap: 10 }}>
               {todaySlots.map(slot => {
-                const hourLabel = slot.hour < 12 ? `${slot.hour}:00 AM` : slot.hour===12 ? '12:00 PM' : `${slot.hour-12}:00 PM`;
+                const hourLabel = slot.hour < 12 ? `${slot.hour}:00 AM` : slot.hour === 12 ? '12:00 PM' : `${slot.hour - 12}:00 PM`;
                 return (
                   <Tap key={slot.id}
                     onPress={() => navigation?.navigate?.('Focus', { subject: slot.subject, duration: slot.duration })}>
-                    <View style={[card, {
-                      flexDirection:'row', alignItems:'center', gap:12, padding:14,
-                      borderLeftWidth:4, borderLeftColor:sColor(slot.subject),
-                    }]}>
-                      <View style={{ width:44, height:44, borderRadius:13, alignItems:'center', justifyContent:'center', backgroundColor:sBg(slot.subject) }}>
-                        <Text style={{ fontSize:20 }}>{SUBJECT_ICONS[slot.subject]||'📌'}</Text>
+                    <View style={[card, { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderLeftWidth: 4, borderLeftColor: sColor(slot.subject) }]}>
+                      <View style={{ width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: sBg(slot.subject) }}>
+                        <Text style={{ fontSize: 20 }}>{SUBJECT_ICONS[slot.subject] || '📌'}</Text>
                       </View>
-                      <View style={{ flex:1 }}>
-                        <Text style={{ fontSize:14, fontWeight:'700', color:sColor(slot.subject) }}>{slot.label||slot.subject}</Text>
-                        <Text style={{ fontSize:11, color:C.muted, marginTop:2 }}>{hourLabel} · {slot.duration} min</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: sColor(slot.subject) }}>{slot.label || slot.subject}</Text>
+                        <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{hourLabel} · {slot.duration} min</Text>
                       </View>
-                      {/* Start button */}
-                      <View style={{ backgroundColor:sColor(slot.subject)+'20', width:36, height:36, borderRadius:18, alignItems:'center', justifyContent:'center' }}>
-                        <Text style={{ fontSize:14, color:sColor(slot.subject) }}>▶</Text>
+                      <View style={{ backgroundColor: sColor(slot.subject) + '20', width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ fontSize: 14, color: sColor(slot.subject) }}>▶</Text>
                       </View>
-                      {/* Delete */}
-                      <TouchableOpacity onPress={() => handleDelete(slot.id)} style={{ padding:4 }} hitSlop={8}>
-                        <Text style={{ fontSize:13, color:C.muted }}>✕</Text>
+                      <TouchableOpacity onPress={() => handleDelete(slot.id)} style={{ padding: 4 }} hitSlop={8}>
+                        <Text style={{ fontSize: 13, color: C.muted }}>✕</Text>
                       </TouchableOpacity>
                     </View>
                   </Tap>
                 );
               })}
-              {/* Add more */}
-              <TouchableOpacity onPress={() => setSheetOpen(true)} style={{ paddingVertical:12, alignItems:'center', borderWidth:1.5, borderColor:C.border, borderStyle:'dashed', borderRadius:16 }}>
-                <Text style={{ fontSize:13, fontWeight:'600', color:C.muted }}>+ Add another slot</Text>
+              <TouchableOpacity onPress={() => setSheetOpen(true)} style={{ paddingVertical: 12, alignItems: 'center', borderWidth: 1.5, borderColor: C.border, borderStyle: 'dashed', borderRadius: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: C.muted }}>+ Add another slot</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        {/* ── Daily motivation quote ────────────────────────── */}
+        {/* Daily quote */}
         <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
           <DailyQuote C={C} />
         </View>
 
       </ScrollView>
-
-      {/* FAB */}
-      <Tap onPress={() => setSheetOpen(true)}
-        style={{ position:'absolute', bottom:28, right:20,
-          shadowColor:'rgba(245,200,66,0.5)', shadowOffset:{width:0,height:6}, shadowOpacity:1, shadowRadius:14, elevation:8 }}>
-        <LinearGradient colors={['#f5c842','#e8b020']} start={{x:0,y:0}} end={{x:1,y:1}}
-          style={{ width:56, height:56, borderRadius:28, alignItems:'center', justifyContent:'center' }}>
-          <Text style={{ fontSize:28, color:'#2a2000', fontWeight:'300', marginTop:-2 }}>+</Text>
-        </LinearGradient>
-      </Tap>
 
       <AddSlotSheet visible={sheetOpen} day={selDay} onSave={handleAdd} onClose={() => setSheetOpen(false)} C={C} />
     </View>
