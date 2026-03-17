@@ -1,14 +1,16 @@
 // src/screens/analytics/WeeklyReportScreen.js
 import React, { useEffect, useRef, useState, useMemo } from 'react';
-import { View, Text, ScrollView, Animated, Image } from 'react-native';
+import { View, Text, ScrollView, Animated, Image, StyleSheet } from 'react-native';
+import { SafeAreaView }        from 'react-native-safe-area-context';
 import { LinearGradient }  from 'expo-linear-gradient';
+import { BlurView }        from 'expo-blur';
 import Svg, { Circle }     from 'react-native-svg';
 import { useTheme }        from '../../context/ThemeContext';
 import { useSession }      from '../../context/sessionContext';
 import { useAuth }         from '../../hooks/useAuth';
 import { SUBJECT_ICONS, sColor, sBg } from '../../themes';
 import { Avatar }          from '../../components';
-import { isValidSession }  from '../../utils/scoreEngine';
+import { getValidSessions } from '../../utils/scoreEngine';
 
 const MIN_SESSIONS = 3;
 
@@ -208,25 +210,30 @@ export default function WeeklyReportScreen() {
   const weekNumber   = Math.ceil(new Date().getDate() / 7);
   const monthName    = new Date().toLocaleString('default', { month: 'long' });
 
-  // FIX: all metrics use validSessions only
-  const validSessions    = useMemo(() => sessions.filter(isValidSession), [sessions]);
-  const insight          = useMemo(() => generateInsight(validSessions), [validSessions]);
-  const completedCount   = validSessions.filter(s => s.completed).length;
+  // Every saved session counts toward unlocking the report and populating metrics.
+  // getValidSessions (>= 60s) is still used for score-based metrics like stability,
+  // but the report gate and session count use ALL sessions.
+  const allSessions    = sessions;
+  const validSessions  = useMemo(() => getValidSessions(sessions), [sessions]);
+
+  // Use all sessions for report gating so every session counts
+  const insight          = useMemo(() => generateInsight(allSessions), [allSessions]);
+  const completedCount   = allSessions.filter(s => s.completed).length;
   const completePct      = insight.completePct;
-  const noDistractionPct = validSessions.length > 0
-    ? Math.round((validSessions.filter(s => !s.distractions?.length).length / validSessions.length) * 100)
+  const noDistractionPct = allSessions.length > 0
+    ? Math.round((allSessions.filter(s => !s.distractions?.length).length / allSessions.length) * 100)
     : 0;
-  const focusConsistency = useMemo(() => calcFocusConsistency(validSessions), [validSessions]);
+  const focusConsistency = useMemo(() => calcFocusConsistency(allSessions), [allSessions]);
 
   const subjectGroups = useMemo(() => {
     const g = {};
-    validSessions.forEach(s => { if (!g[s.subject]) g[s.subject] = []; g[s.subject].push(s); });
+    allSessions.forEach(s => { if (!g[s.subject]) g[s.subject] = []; g[s.subject].push(s); });
     return g;
-  }, [validSessions]);
+  }, [allSessions]);
 
-  // FIX: sessionsRemaining based on validSessions (not total including invalid)
-  const sessionsRemaining = Math.max(0, MIN_SESSIONS - validSessions.length);
-  const hasEnoughData     = validSessions.length >= MIN_SESSIONS;
+  // Gate uses total sessions — every session counts toward unlock
+  const sessionsRemaining = Math.max(0, MIN_SESSIONS - allSessions.length);
+  const hasEnoughData     = allSessions.length >= MIN_SESSIONS;
 
   // FIX: RECS inside useMemo so C values are always current
   const RECS = useMemo(() => [
@@ -244,6 +251,7 @@ export default function WeeklyReportScreen() {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
     <ScrollView
       style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
@@ -262,57 +270,139 @@ export default function WeeklyReportScreen() {
       {/* ── LOCKED STATE ─────────────────────────────────────── */}
       {!hasEnoughData ? (
         <View>
-          <LinearGradient
-            colors={['#1a1a2e', '#16213e', '#0f3460']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={{ borderRadius: 24, padding: 28, marginBottom: 20, alignItems: 'center' }}
-          >
-            <View style={{ marginBottom: 16 }}>
-              {avatarSource
-                ? <Image source={avatarSource} style={{ width: 64, height: 64, borderRadius: 32, borderWidth: 3, borderColor: 'rgba(255,255,255,0.3)' }} />
-                : <Avatar name={name} size={64} />
-              }
-            </View>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: -0.5, marginBottom: 12 }}>
-              Hi, {name}! 👋
-            </Text>
-            <View style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: 'rgba(245,200,66,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderWidth: 2, borderColor: 'rgba(245,200,66,0.3)' }}>
-              <Text style={{ fontSize: 28 }}>🔒</Text>
-            </View>
-            <Text style={{ fontSize: 15, fontWeight: '700', color: '#f5c842', textAlign: 'center', marginBottom: 10 }}>
-              MirrorMind Analysis Locked
-            </Text>
-            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
-              Complete{' '}
-              <Text style={{ fontWeight: '800', color: '#f5c842' }}>
-                {sessionsRemaining} more session{sessionsRemaining !== 1 ? 's' : ''}
-              </Text>
-              {' '}to unlock your personalized weekly analysis.
-            </Text>
-            {/* Progress bar */}
-            <View style={{ width: '100%', marginBottom: 10 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '600' }}>
-                  {validSessions.length} / {MIN_SESSIONS} sessions
-                </Text>
-                <Text style={{ fontSize: 11, color: '#f5c842', fontWeight: '700' }}>
-                  {Math.round((validSessions.length / MIN_SESSIONS) * 100)}%
-                </Text>
-              </View>
-              <View style={{ height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
-                <LinearGradient
-                  colors={['#f5c842', '#e8b020']}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={{ width: `${Math.min((validSessions.length / MIN_SESSIONS) * 100, 100)}%`, height: '100%', borderRadius: 4 }}
-                />
-              </View>
-            </View>
-            <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', textAlign: 'center' }}>
-              {sessionsRemaining === 0 ? 'Unlocking...' : `${sessionsRemaining} more to go`}
-            </Text>
-          </LinearGradient>
+          {/* ── Ghost preview cards visible through glass ── */}
+          <View style={{ position: 'relative', marginBottom: 20 }}>
 
-          {/* What you'll unlock */}
+            {/* Faint "Subject Breakdown" ghost card underneath */}
+            <View style={{
+              borderRadius: 20, padding: 20, marginBottom: 12,
+              backgroundColor: C.card,
+              borderWidth: 1, borderColor: C.border,
+              opacity: 0.45,
+            }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 14 }}>Subject Performance</Text>
+              {['Math', 'Science', 'English'].map((subj, i) => (
+                <View key={subj} style={{ marginBottom: 12 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: C.muted }}>{subj}</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: C.muted }}>{[72, 55, 88][i]}%</Text>
+                  </View>
+                  <View style={{ height: 5, borderRadius: 3, backgroundColor: C.bgRaised, overflow: 'hidden' }}>
+                    <View style={{ width: `${[72, 55, 88][i]}%`, height: '100%', borderRadius: 3, backgroundColor: C.border }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* Faint "Pattern Detection" ghost card underneath */}
+            <View style={{
+              borderRadius: 20, padding: 20, marginBottom: 12,
+              backgroundColor: C.card,
+              borderWidth: 1, borderColor: C.border,
+              opacity: 0.4,
+            }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 12 }}>Pattern Detection</Text>
+              {[
+                { label: 'Best Focus Window', w: '80%' },
+                { label: 'Stability Score',   w: '60%' },
+                { label: 'Deep Work Ratio',   w: '45%' },
+              ].map(p => (
+                <View key={p.label} style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 11, color: C.muted, marginBottom: 4 }}>{p.label}</Text>
+                  <View style={{ height: 6, borderRadius: 3, backgroundColor: C.bgRaised, overflow: 'hidden' }}>
+                    <View style={{ width: p.w, height: '100%', borderRadius: 3, backgroundColor: C.border }} />
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            {/* ── Glassmorphism overlay ── */}
+            <BlurView
+              intensity={55}
+              tint="default"
+              style={{
+                position:     'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                borderRadius: 20,
+                overflow:     'hidden',
+              }}
+            >
+              {/* Frosted tint layer */}
+              <View style={{
+                flex:            1,
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                borderRadius:    20,
+                borderWidth:     1,
+                borderColor:     'rgba(255,255,255,0.18)',
+                alignItems:      'center',
+                justifyContent:  'center',
+                padding:         28,
+              }}>
+                {/* Avatar */}
+                <View style={{ marginBottom: 14 }}>
+                  {avatarSource
+                    ? <Image source={avatarSource} style={{ width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: 'rgba(245,200,66,0.5)' }} />
+                    : <Avatar name={name} size={56} />
+                  }
+                </View>
+
+                <Text style={{ fontSize: 20, fontWeight: '800', color: C.text, textAlign: 'center', letterSpacing: -0.4, marginBottom: 6 }}>
+                  Hi, {name}! 👋
+                </Text>
+
+                {/* Lock icon */}
+                <View style={{
+                  width: 52, height: 52, borderRadius: 26,
+                  backgroundColor: 'rgba(245,200,66,0.15)',
+                  borderWidth: 1.5, borderColor: 'rgba(245,200,66,0.4)',
+                  alignItems: 'center', justifyContent: 'center',
+                  marginBottom: 14,
+                }}>
+                  <Text style={{ fontSize: 24 }}>🔒</Text>
+                </View>
+
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#f5c842', textAlign: 'center', marginBottom: 8 }}>
+                  MirrorMind Analysis Locked
+                </Text>
+                <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+                  Complete{' '}
+                  <Text style={{ fontWeight: '800', color: '#f5c842' }}>
+                    {sessionsRemaining} more session{sessionsRemaining !== 1 ? 's' : ''}
+                  </Text>
+                  {' '}to unlock your personalized weekly analysis.
+                </Text>
+
+                {/* ── GRADIENT progress bar (was solid yellow) ── */}
+                <View style={{ width: '100%', marginBottom: 6 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text style={{ fontSize: 11, color: C.muted, fontWeight: '600' }}>
+                      {allSessions.length} / {MIN_SESSIONS} sessions
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#f5c842', fontWeight: '700' }}>
+                      {Math.round((allSessions.length / MIN_SESSIONS) * 100)}%
+                    </Text>
+                  </View>
+                  <View style={{ height: 8, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 4, overflow: 'hidden' }}>
+                    <LinearGradient
+                      colors={['#FFD700', '#FFA500']}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      style={{ width: `${Math.min((allSessions.length / MIN_SESSIONS) * 100, 100)}%`, height: '100%', borderRadius: 4 }}
+                    />
+                  </View>
+                </View>
+
+                {/* ── Micro-copy ── */}
+                <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center', fontStyle: 'italic', marginBottom: 4, lineHeight: 16 }}>
+                  Unlock to see which time of day you are most productive.
+                </Text>
+                <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center' }}>
+                  {sessionsRemaining === 0 ? 'Unlocking...' : `${sessionsRemaining} more to go`}
+                </Text>
+              </View>
+            </BlurView>
+          </View>
+
+          {/* What you'll unlock — items dimmed to reinforce locked state */}
           <View style={card}>
             <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 16 }}>What you'll unlock 🚀</Text>
             {[
@@ -321,7 +411,11 @@ export default function WeeklyReportScreen() {
               { icon: '📈', label: 'Subject Breakdown',    desc: 'Time & score per subject'                 },
               { icon: '🎯', label: 'Weekly Target',        desc: 'Goal tracking with gradient progress bar' },
             ].map((item, i, arr) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: i < arr.length - 1 ? 14 : 0 }}>
+              <View key={i} style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                marginBottom: i < arr.length - 1 ? 14 : 0,
+                opacity: 0.5,   // reinforces locked status
+              }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: C.bgRaised, alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ fontSize: 18 }}>{item.icon}</Text>
                 </View>
@@ -497,5 +591,6 @@ export default function WeeklyReportScreen() {
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }

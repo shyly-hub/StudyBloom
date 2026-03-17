@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { useTheme }   from '../../context/ThemeContext';
 import { useSession } from '../../context/sessionContext';
-import { computeMetrics, isValidSession } from '../../utils/scoreEngine';
+import { computeMetrics, getValidSessions } from '../../utils/scoreEngine';
 import { SUBJECTS, sColor } from '../../themes';
 
 const { width } = Dimensions.get('window');
@@ -54,10 +54,12 @@ function AnimatedRing({ value = 0, size = 82, color, label, C, delay = 0, stroke
 
 // ── Animated Bar Chart ─────────────────────────────────────────
 function BarChart({ data, C }) {
-  const anims   = useRef(data.map(() => new Animated.Value(0))).current;
-  const maxVal  = Math.max(...data.map(d => d.minutes), 1);
-  const barH    = 110;
-  const todayI  = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const anims      = useRef(data.map(() => new Animated.Value(0))).current;
+  // Dynamic Y-axis: scale based on valid (>=60s) session data only
+  const maxVal     = Math.max(...data.map(d => d.minutes), 1);
+  const barH       = 110;
+  const todayI     = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+  const hasAnyData = data.some(d => d.minutes > 0);
 
   useEffect(() => {
     const springs = data.map((d, i) =>
@@ -69,6 +71,21 @@ function BarChart({ data, C }) {
     );
     Animated.parallel(springs).start();
   }, [data]);
+
+  // No-data placeholder
+  if (!hasAnyData) {
+    return (
+      <View style={{ alignItems: 'center', paddingVertical: 28, gap: 8 }}>
+        <Text style={{ fontSize: 30 }}>📭</Text>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: C.text, textAlign: 'center' }}>
+          No Data Yet
+        </Text>
+        <Text style={{ fontSize: 12, color: C.muted, textAlign: 'center', lineHeight: 18 }}>
+          Complete your first 1-minute session{'\n'}to see insights here.
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-end', height: barH + 24, gap: 4, paddingTop: 12 }}>
@@ -159,6 +176,7 @@ function DonutChart({ data, size = 140, C }) {
 }
 
 // ── WEEKLY DATA from real sessions ────────────────────────────
+// Only includes sessions where durationSeconds >= 60 (valid sessions)
 function getWeeklyData(sessions) {
   const days  = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const today = new Date();
@@ -169,10 +187,13 @@ function getWeeklyData(sessions) {
     target.setHours(0,0,0,0);
 
     const mins = sessions
-      .filter(s => isValidSession(s) && s.date && (() => {
-        const d = new Date(s.date); d.setHours(0,0,0,0);
-        return d.getTime() === target.getTime();
-      })())
+      .filter(s => {
+        const durSec = s.durationSeconds ?? (s.duration || 0) * 60;
+        return durSec >= 60 && s.date && (() => {
+          const d = new Date(s.date); d.setHours(0,0,0,0);
+          return d.getTime() === target.getTime();
+        })();
+      })
       .reduce((sum, s) => sum + Math.floor((s.durationSeconds ?? (s.duration||0)*60) / 60), 0);
 
     return { day, minutes: mins };
@@ -194,10 +215,12 @@ export default function AnalyticsScreen() {
   const { sessions, disciplineScore } = useSession();
   const [weekFilter, setWeekFilter]   = useState('This Week');
 
-  const validSessions  = sessions.filter(isValidSession);
+  // getValidSessions() is the single source of truth — shared with History and Report
+  const validSessions  = getValidSessions(sessions);
   const metrics        = computeMetrics(sessions);
   const totalMins      = metrics.totalMinutes;
-  const weeklyData     = getWeeklyData(sessions);
+  // Weekly bar chart uses validSessions only (durationSeconds >= 60)
+  const weeklyData     = getWeeklyData(validSessions);
 
   const donutData = metrics.distractionBreakdown
     .slice(0, 6)
@@ -215,6 +238,7 @@ export default function AnalyticsScreen() {
   };
 
   return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }} edges={['top']}>
     <ScrollView style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ padding: PAD, paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}>
@@ -231,25 +255,43 @@ export default function AnalyticsScreen() {
       <View style={card}>
         <Text style={{ fontSize: 15, fontWeight: '700', color: C.text, marginBottom: 16 }}>Performance Score</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
-          <AnimatedRing value={disciplineScore}     color={C.blue}   label={'Discipline\nScore'} C={C} delay={0}   />
+          <AnimatedRing value={disciplineScore}      color={C.blue}   label={'Discipline\nScore'} C={C} delay={0}   />
           <AnimatedRing value={metrics.stabilityPct} color={C.green}  label={'Stability\n%'}      C={C} delay={100} />
           <AnimatedRing value={metrics.deepWorkPct}  color={C.yellow} label={'Deep Work\n%'}      C={C} delay={200} />
         </View>
-        {/* Invalid sessions note */}
-        {metrics.invalidSessions > 0 && (
-          <View style={{ marginTop: 12, backgroundColor: C.orangeSoft, borderRadius: 10, padding: 10, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={{ fontSize: 12 }}>⚠️</Text>
-            <Text style={{ fontSize: 11, color: C.orange, fontWeight: '600', flex: 1 }}>
-              {metrics.invalidSessions} session{metrics.invalidSessions > 1 ? 's' : ''} under 1 min marked Invalid — not counted in scores
-            </Text>
-          </View>
-        )}
       </View>
+
+      {/* ── Short-sessions info banner ────────────────────── */}
+      {metrics.invalidSessions > 0 && (
+        <View style={{
+          flexDirection:     'row',
+          alignItems:        'center',
+          gap:               10,
+          backgroundColor:   C.bgRaised,
+          borderRadius:      14,
+          padding:           12,
+          marginBottom:      14,
+          borderWidth:       1,
+          borderColor:       C.border,
+        }}>
+          <Text style={{ fontSize: 16 }}>ℹ️</Text>
+          <Text style={{ flex: 1, fontSize: 11, color: C.muted, lineHeight: 16 }}>
+            <Text style={{ fontWeight: '700', color: C.text }}>{metrics.invalidSessions} short session{metrics.invalidSessions > 1 ? 's' : ''} </Text>
+            (&lt;1 min) are saved in History but don't affect Performance Scores.
+          </Text>
+        </View>
+      )}
 
       {/* ── Quick stats ──────────────────────────────────── */}
       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
         {[
-          { label: 'Total Hours', value: `${Math.floor(totalMins/60)}h`,  color: C.blue   },
+          {
+            label: 'Total Hours',
+            value: totalMins < 60
+              ? `${totalMins}m`
+              : `${(totalMins / 60).toFixed(1)}h`,
+            color: C.blue,
+          },
           { label: 'Sessions',    value: metrics.validSessions,            color: C.green  },
           { label: 'Completed',   value: metrics.completedSessions,        color: C.purple },
         ].map(s => (
@@ -281,7 +323,10 @@ export default function AnalyticsScreen() {
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: C.border }}>
           <Text style={{ fontSize: 12, color: C.muted, fontWeight: '600' }}>Total this week</Text>
           <Text style={{ fontSize: 12, fontWeight: '800', color: C.text }}>
-            {Math.floor(weeklyData.reduce((a,d)=>a+d.minutes,0)/60)}h {weeklyData.reduce((a,d)=>a+d.minutes,0)%60}m
+            {(() => {
+              const wTotal = weeklyData.reduce((a, d) => a + d.minutes, 0);
+              return wTotal < 60 ? `${wTotal}m` : `${(wTotal / 60).toFixed(1)}h`;
+            })()}
           </Text>
         </View>
       </View>
@@ -363,5 +408,6 @@ export default function AnalyticsScreen() {
       )}
 
     </ScrollView>
+    </SafeAreaView>
   );
 }

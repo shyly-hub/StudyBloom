@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme }       from '../../context/ThemeContext';
 import { useSession }     from '../../context/sessionContext';
+import { getValidSessions, MIN_VALID_SECONDS } from '../../utils/scoreEngine';
 import { MOODS, sColor, sBg, SUBJECT_ICONS } from '../../themes';
 
 const FILTERS = ['All', 'Done', 'Quit'];
@@ -44,7 +45,15 @@ function SessionCard({ session, onDelete, C }) {
   const distrCount  = Array.isArray(distractions) ? distractions.length : 0;
   const moodEmoji   = MOODS?.[mood] || '🙂';
   const energyColor = energy === 'High' ? C.green : energy === 'Medium' ? C.yellow : C.red;
-  const dur         = session.durationMinutes ?? session.duration ?? 0;
+  const durSecs     = session.durationSeconds ?? ((session.duration ?? 0) * 60);
+  const isShort     = durSecs < MIN_VALID_SECONDS;   // < 60s — history-only, no score impact
+
+  // Human-readable duration
+  const durLabel = durSecs < 60
+    ? `${durSecs}s`
+    : durSecs < 3600
+    ? `${Math.floor(durSecs / 60)}m ${durSecs % 60 > 0 ? `${durSecs % 60}s` : ''}`.trim()
+    : `${Math.floor(durSecs / 3600)}h ${Math.floor((durSecs % 3600) / 60)}m`;
 
   const handleDelete = () => {
     Alert.alert('Delete Session', 'Are you sure?', [
@@ -57,12 +66,13 @@ function SessionCard({ session, onDelete, C }) {
     <View style={{
       flexDirection: 'row', backgroundColor: C.card,
       borderRadius: 20, marginBottom: 8, overflow: 'hidden',
-      borderWidth: 1, borderColor: C.border,
+      borderWidth: 1, borderColor: isShort ? C.border : C.border,
+      opacity: isShort ? 0.82 : 1,
       shadowColor: C.shadow, shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 1, shadowRadius: 6, elevation: 2,
     }}>
       {/* Left accent */}
-      <View style={{ width: 4, backgroundColor: accentColor }} />
+      <View style={{ width: 4, backgroundColor: isShort ? C.muted : accentColor }} />
 
       <View style={{ flex: 1, padding: 14 }}>
         {/* Top row */}
@@ -73,16 +83,18 @@ function SessionCard({ session, onDelete, C }) {
             </View>
             <View>
               <Text style={{ fontSize: 13, fontWeight: '700', color: C.text }}>{subject}</Text>
-              <Text style={{ fontSize: 11, color: C.muted }}>
-                {dur > 0 ? `${dur} min` : '< 1 min'}
-              </Text>
+              <Text style={{ fontSize: 11, color: C.muted }}>{durLabel}</Text>
             </View>
           </View>
 
-          {/* Status dot — small and clean */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: accentColor }} />
-            <Text style={{ fontSize: 11, fontWeight: '600', color: accentColor }}>
+            {isShort && (
+              <View style={{ backgroundColor: C.bgRaised, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginRight: 4 }}>
+                <Text style={{ fontSize: 9, fontWeight: '700', color: C.muted, letterSpacing: 0.4 }}>NO SCORE</Text>
+              </View>
+            )}
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: isShort ? C.muted : accentColor }} />
+            <Text style={{ fontSize: 11, fontWeight: '600', color: isShort ? C.muted : accentColor }}>
               {completed ? 'Done' : 'Quit'}
             </Text>
           </View>
@@ -156,6 +168,7 @@ export default function HistoryScreen() {
   const [search, setSearch]          = useState('');
 
   const filtered = useMemo(() => {
+    // History shows ALL saved sessions — every second counts.
     let list = [...sessions];
     if (filter === 'Done') list = list.filter(s => s.completed);
     if (filter === 'Quit') list = list.filter(s => !s.completed);
@@ -174,9 +187,15 @@ export default function HistoryScreen() {
     return groups;
   }, [filtered]);
 
-  const totalMins    = sessions.reduce((a, s) => a + (s.durationMinutes ?? s.duration ?? 0), 0);
-  const completedPct = sessions.length > 0
-    ? Math.round((sessions.filter(s => s.completed).length / sessions.length) * 100) : 0;
+  const validSessions = useMemo(() => getValidSessions(sessions), [sessions]);
+  const totalMins     = validSessions.reduce((a, s) => a + Math.floor((s.durationSeconds ?? (s.duration ?? 0) * 60) / 60), 0);
+  const completedPct  = validSessions.length > 0
+    ? Math.round((validSessions.filter(s => s.completed).length / validSessions.length) * 100) : 0;
+  const shortCount    = sessions.length - validSessions.length;
+
+  const totalTimeLabel = totalMins < 60
+    ? `${totalMins}m`
+    : `${(totalMins / 60).toFixed(1)}h`;
 
   return (
     <ScrollView
@@ -196,12 +215,12 @@ export default function HistoryScreen() {
       <LinearGradient
         colors={[C.blueDark, C.blue]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={{ borderRadius: 20, padding: 20, flexDirection: 'row', marginBottom: 16, alignItems: 'center' }}
+        style={{ borderRadius: 20, padding: 20, flexDirection: 'row', marginBottom: shortCount > 0 ? 8 : 16, alignItems: 'center' }}
       >
         {[
-          { val: sessions.length,                               lbl: 'Sessions'   },
-          { val: `${Math.floor(totalMins/60)}h ${totalMins%60}m`, lbl: 'Total Time' },
-          { val: `${completedPct}%`,                            lbl: 'Completion' },
+          { val: sessions.length,    lbl: 'Sessions'   },
+          { val: totalTimeLabel,     lbl: 'Focus Time' },
+          { val: `${completedPct}%`, lbl: 'Completion' },
         ].map((s, i) => (
           <React.Fragment key={s.lbl}>
             {i > 0 && <View style={{ width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.25)' }} />}
@@ -212,6 +231,16 @@ export default function HistoryScreen() {
           </React.Fragment>
         ))}
       </LinearGradient>
+
+      {/* Short-session footnote — only shown when short sessions exist */}
+      {shortCount > 0 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16, paddingHorizontal: 4 }}>
+          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: C.muted }} />
+          <Text style={{ fontSize: 11, color: C.muted, flex: 1, lineHeight: 16 }}>
+            {shortCount} short session{shortCount > 1 ? 's' : ''} (&lt;1 min) recorded here but excluded from Performance Scores.
+          </Text>
+        </View>
+      )}
 
       {/* Search */}
       <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, paddingHorizontal: 14, height: 48, marginBottom: 14, borderWidth: 1, borderColor: C.border }}>

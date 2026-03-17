@@ -73,7 +73,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
         </View>
 
         <Text style={styles.intro}>
-          Your privacy matters. This policy explains what data MirrorMind collects, how we use it, and the choices you have.
+          Your privacy matters. This policy explains what data StudyBloom collects, how we use it, and the choices you have.
         </Text>
 
         {SECTIONS.map((s, i) => (
@@ -84,7 +84,7 @@ export default function PrivacyPolicyScreen({ navigation }) {
         ))}
 
         <View style={styles.footer}>
-          <Text style={styles.footerText}>MirrorMind · v1.0.1</Text>
+          <Text style={styles.footerText}>StudyBloom · v1.0.1</Text>
         </View>
       </ScrollView>
     </View>

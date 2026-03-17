@@ -1,4 +1,3 @@
-
 //  Usage:
 //    const { score, metrics, applySession, adaptiveDuration } = useScore()
 // ══════════════════════════════════════════════════════════════════
@@ -16,6 +15,8 @@ import {
   generateInsights,
   generateWeeklyReport,
   getRankFromScore,
+  getValidSessions,
+  getCompletionStatus,
 } from '../utils/scoreEngine';
 
 export function useScore() {
@@ -59,11 +60,12 @@ export function useScore() {
   useEffect(() => {
     if (!sessions.length) return;
 
-    const m = computeMetrics(sessions);
+    const valid = getValidSessions(sessions);
+    const m = computeMetrics(sessions);        // computeMetrics filters internally too
     setMetrics(m);
-    setInsights(generateInsights(sessions, m));
+    setInsights(generateInsights(valid, m));
     setWeeklyReport(generateWeeklyReport(m));
-    setAdaptiveDuration(getAdaptiveDuration(sessions, adaptiveDuration));
+    setAdaptiveDuration(getAdaptiveDuration(valid, adaptiveDuration));
   }, [sessions]);
 
   // ── Update rank whenever score changes ─
@@ -126,5 +128,8 @@ export function useScore() {
     error,
     applySession,
     manualSetScore,
+    // Utilities — same source of truth as all screens
+    getValidSessions,
+    getCompletionStatus,
   };
 }

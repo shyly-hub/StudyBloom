@@ -1,12 +1,56 @@
-
 import { SCORE_RULES } from '../themes/constants';
 
-// ── Min duration to count as a valid session ──────────────────
-export const MIN_VALID_SECONDS = 60;   // 1 minute
+// ── Duration threshold ────────────────────────────────────────
+// Every session that gets saved appears in History — no minimum.
+// Only sessions >= 60s count toward Analytics / Discipline Score.
+export const MIN_VALID_SECONDS = 60;   // counts toward scores & analytics
 
+/**
+ * Returns true if this session counts toward Analytics & Discipline Score.
+ * Short sessions (< 60s) still appear in History but don't affect scores.
+ */
 export function isValidSession(session = {}) {
   const secs = session.durationSeconds ?? ((session.duration || 0) * 60);
   return secs >= MIN_VALID_SECONDS;
+}
+
+/**
+ * Single source-of-truth filter used by ALL screens.
+ * Returns only sessions with durationSeconds >= 60.
+ */
+export function getValidSessions(sessions = []) {
+  return sessions.filter(isValidSession);
+}
+
+/**
+ * Completion classification with 90%-of-target rule:
+ *   - "completed" : session.completed === true OR reached >= 90% of target
+ *   - "partial"   : reached 1–89% of target (quit but not zero-effort)
+ *   - "quit"      : < 1% of target or no target and completed === false
+ *
+ * Returns { status: 'completed'|'partial'|'quit', completionPct: number }
+ */
+export function getCompletionStatus(session = {}) {
+  const actualSecs = session.durationSeconds ?? ((session.duration || 0) * 60);
+  const targetSecs = session.targetDurationSeconds
+    ?? ((session.targetDuration || session.plannedDuration || 0) * 60);
+
+  if (targetSecs > 0) {
+    const pct = Math.round((actualSecs / targetSecs) * 100);
+    if (pct >= 90 || session.completed) return { status: 'completed', completionPct: Math.min(pct, 100) };
+    if (pct >= 1)                        return { status: 'partial',   completionPct: pct };
+    return                                      { status: 'quit',      completionPct: 0   };
+  }
+
+  return session.completed
+    ? { status: 'completed', completionPct: 100 }
+    : { status: 'quit',      completionPct: 0   };
+}
+
+/** Returns true for completed OR partial sessions (counts toward stability). */
+export function isCountedSession(session = {}) {
+  const { status } = getCompletionStatus(session);
+  return status === 'completed' || status === 'partial';
 }
 
 // ── Score delta ────────────────────────────────────────────────
@@ -68,8 +112,10 @@ export function computeMetrics(sessions = []) {
   const completed  = valid.filter(s => s.completed);
   const quit       = valid.filter(s => !s.completed);
 
-  // Stability % — only valid sessions
-  const stabilityPct = Math.round((completed.length / valid.length) * 100);
+  // Stability % — completed OR partial (not pure quits)
+  // Uses getCompletionStatus so 1m01s of a 5m session still counts as partial
+  const countedForStability = valid.filter(s => isCountedSession(s));
+  const stabilityPct = Math.round((countedForStability.length / valid.length) * 100);
 
   // Deep work % — completed with 0 distractions
   const deepWork    = completed.filter(s => !s.distractions?.length);
