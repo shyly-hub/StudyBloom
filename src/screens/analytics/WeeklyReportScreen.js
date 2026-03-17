@@ -203,7 +203,8 @@ export default function WeeklyReportScreen() {
   const name         = userData?.name || 'Student';
   const score        = userData?.score ?? userData?.disciplineScore ?? 0;
   const avatarId     = userData?.avatarId || null;
-  const avatarSource = getAvatarSource(avatarId);
+  const customAvatar = userData?.customAvatar || null;
+  const avatarSource = customAvatar ? { uri: customAvatar } : getAvatarSource(avatarId);
   const weekNumber   = Math.ceil(new Date().getDate() / 7);
   const monthName    = new Date().toLocaleString('default', { month: 'long' });
 

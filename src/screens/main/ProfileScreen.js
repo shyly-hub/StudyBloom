@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme }    from '../../context/ThemeContext';
 import { useAuth }     from '../../hooks/useAuth';
 import { useSession }  from '../../context/sessionContext';
+import * as ImagePicker from 'expo-image-picker';
 import { StatCard }    from '../../components';
 
 const { width } = Dimensions.get('window');
@@ -76,52 +77,124 @@ function EditNameModal({ visible, currentName, onSave, onClose, C }) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-        <View style={{
+  <Modal
+    visible={visible}
+    transparent
+    animationType="fade"
+    onRequestClose={onClose}
+  >
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+      }}
+    >
+      <View
+        style={{
+          width: '100%',
           backgroundColor: C.card,
-          borderTopLeftRadius: 28, borderTopRightRadius: 28,
-          padding: 24, paddingBottom: 44,
-          borderTopWidth: 1, borderTopColor: C.border,
-        }}>
-          <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 20 }} />
-          <Text style={{ fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 6 }}>Edit Name</Text>
-          <Text style={{ fontSize: 13, color: C.muted, marginBottom: 20 }}>Appears on your profile and sessions.</Text>
-          <View style={{
-            backgroundColor: C.bgRaised, borderRadius: 14, borderWidth: 1.5,
+          borderRadius: 20,
+          padding: 24,
+          borderWidth: 1,
+          borderColor: C.border,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 20,
+            fontWeight: '800',
+            color: C.text,
+            marginBottom: 12,
+          }}
+        >
+          Edit Name
+        </Text>
+
+        <View
+          style={{
+            backgroundColor: C.bgRaised,
+            borderRadius: 14,
+            borderWidth: 1.5,
             borderColor: error ? C.red : C.border,
-            paddingHorizontal: 16, height: 52, justifyContent: 'center', marginBottom: 6,
-          }}>
-            <TextInput
-              style={{ fontSize: 16, color: C.text, fontWeight: '500' }}
-              value={value}
-              onChangeText={v => { setValue(v); setError(''); }}
-              placeholder="Your name"
-              placeholderTextColor={C.subtext}
-              autoFocus maxLength={32} selectionColor={C.blue}
-              returnKeyType="done" onSubmitEditing={handleSave}
-            />
-          </View>
-          {error
-            ? <Text style={{ fontSize: 12, color: C.red, marginBottom: 14, marginLeft: 4 }}>{error}</Text>
-            : <View style={{ height: 14 }} />
-          }
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity onPress={onClose} activeOpacity={0.75}
-              style={{ flex: 1, height: 50, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: C.muted }}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85}
-              style={{ flex: 1, height: 50, borderRadius: 14, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center' }}>
-              {saving
-                ? <ActivityIndicator color="#2a2000" size="small" />
-                : <Text style={{ fontSize: 15, fontWeight: '800', color: '#2a2000' }}>Save</Text>
-              }
-            </TouchableOpacity>
-          </View>
+            paddingHorizontal: 16,
+            height: 52,
+            justifyContent: 'center',
+            marginBottom: 6,
+          }}
+        >
+          <TextInput
+            style={{ fontSize: 16, color: C.text, fontWeight: '500' }}
+            value={value}
+            onChangeText={v => {
+              setValue(v);
+              setError('');
+            }}
+            placeholder="Your name"
+            placeholderTextColor={C.subtext}
+            autoFocus
+            maxLength={32}
+            selectionColor={C.blue}
+            returnKeyType="done"
+            onSubmitEditing={handleSave}
+          />
+        </View>
+
+        {error ? (
+          <Text
+            style={{ fontSize: 12, color: C.red, marginBottom: 14, marginLeft: 4 }}
+          >
+            {error}
+          </Text>
+        ) : (
+          <View style={{ height: 14 }} />
+        )}
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <TouchableOpacity
+            onPress={onClose}
+            style={{
+              flex: 1,
+              height: 50,
+              borderRadius: 14,
+              borderWidth: 1.5,
+              borderColor: C.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 10,
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: '600', color: C.muted }}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleSave}
+            disabled={saving}
+            style={{
+              flex: 1,
+              height: 50,
+              borderRadius: 14,
+              backgroundColor: C.blue,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {saving ? (
+              <ActivityIndicator color="#2a2000" />
+            ) : (
+              <Text style={{ fontSize: 15, fontWeight: '800', color: '#2a2000' }}>
+                Save
+              </Text>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
-    </Modal>
+    </View>
+  </Modal>
   );
 }
 
@@ -140,15 +213,39 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
   const [selected, setSelected] = useState(current || null);
   const [filter,   setFilter]   = useState('all');
   const [saving,   setSaving]   = useState(false);
+  const [customImage, setCustomImage] = useState(null);
 
   const filtered = filter === 'all' ? AVATARS : AVATARS.filter(a => a.gender === filter);
 
   const handleSave = async () => {
-    if (!selected) return;
-    setSaving(true);
-    try   { await onSave(selected); onClose(); }
-    catch { Alert.alert('Error', 'Could not save avatar.'); }
-    finally { setSaving(false); }
+  if (!selected && !customImage) return;
+
+  setSaving(true);
+  try {
+    await onSave({ selected, customImage });
+    onClose();
+  } catch {
+    Alert.alert('Error', 'Could not save avatar.');
+  } finally {
+    setSaving(false);
+  }
+  };
+
+  const handleUploadCustom = async () => {
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8
+    });
+
+    if (!result.canceled) {
+      setCustomImage(result.assets[0].uri);
+      setSelected(null);
+    }
+
+  } catch {
+    Alert.alert('Error','Could not pick image');
+  }
   };
 
   return (
@@ -175,6 +272,18 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          {/* Custom Image Upload */}
+          <TouchableOpacity onPress={handleUploadCustom} style={{alignItems:'center', marginBottom:16}}>
+            <View style={{width:76, height:76, borderRadius:38, backgroundColor:C.bgRaised, borderWidth:customImage ? 3 : 1.5, borderColor:customImage ? C.blue : C.border, alignItems:'center', justifyContent:'center', overflow:'hidden'}}>
+              {customImage ?
+              <Image source={{uri:customImage}} style={{width:'100%',height:'100%'}}/>
+              :
+                <Text style={{fontSize:18,color:C.muted}}>+</Text>
+              }
+            </View>
+            <Text style={{fontSize:10, color:C.muted, marginTop:4}}>Your Photo</Text>
+          </TouchableOpacity>
 
           {/* Grid */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 24 }}>
@@ -204,7 +313,7 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
               style={{ flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, borderColor: C.border, alignItems: 'center', justifyContent: 'center' }}>
               <Text style={{ fontSize: 15, fontWeight: '600', color: C.muted }}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleSave} disabled={saving || !selected} activeOpacity={0.85}
+            <TouchableOpacity onPress={handleSave} disabled={saving || (!selected && !customImage)} activeOpacity={0.85}
               style={{ flex: 2, height: 52, borderRadius: 14, backgroundColor: selected ? C.blue : C.border, alignItems: 'center', justifyContent: 'center' }}>
               {saving
                 ? <ActivityIndicator color="#2a2000" size="small" />
@@ -246,12 +355,25 @@ export default function ProfileScreen({ navigation }) {
   const score    = userData?.score    ?? 0;
   const streak   = userData?.streak   ?? 0;
   const hours    = Math.round(((userData?.totalMinutes || 0) / 60) * 10) / 10;
-  const avatarSource = getAvatarSource(avatarId);
+  const avatarSource = userData?.customAvatar ? { uri: userData.customAvatar }: getAvatarSource(avatarId);
   const { rank, next, pct: rankPct } = getRank(hours);
 
   const handleSaveName   = async (newName)     => { await updateUserData({ name: newName }); };
-  const handleSaveAvatar = async (newAvatarId) => { await updateUserData({ avatarId: newAvatarId }); };
+  const handleSaveAvatar = async ({ selected, customImage }) => {
+    if(customImage){
+      await updateUserData({
+      customAvatar: customImage,
+      avatarId: null
+    });
+  }
+  else if(selected){
+    await updateUserData({
+      avatarId: selected,
+      customAvatar: null
+    });
+  }
 
+};
   const handleLogout = () => Alert.alert(
     'Log Out', `Sign out of ${email || 'your account'}?`,
     [
@@ -376,7 +498,7 @@ const menuSections = [
           </View>
         </View>
 
-        {/* Bottom row — Hours and Sessions smaller */}
+        {/* Bottom row — Hours and Sessions */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
           <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 24, padding: 16, borderWidth: 1, borderColor: C.border, alignItems: 'center', shadowColor: C.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 8, elevation: 3 }}>
             <Text style={{ fontSize: 22, marginBottom: 4 }}>⏱</Text>

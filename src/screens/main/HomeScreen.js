@@ -244,7 +244,8 @@ export default function HomeScreen({ navigation }) {
   const streak    = userData?.streak  ?? 0;
   const dailyGoal = userData?.dailyGoal ?? 120;
   const avatarId  = userData?.avatarId  || null;
-  const avatarSource = getAvatarSource(avatarId);
+  const customAvatar = userData?.customAvatar || null;
+  const avatarSource = customAvatar ? { uri: customAvatar } : getAvatarSource(avatarId);
 
   const [subject,  setSubject]  = useState('Math');
   const [duration, setDuration] = useState(25);
