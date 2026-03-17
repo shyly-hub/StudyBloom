@@ -235,16 +235,15 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
   try {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.8
+      quality: 0.8,
     });
 
     if (!result.canceled) {
       setCustomImage(result.assets[0].uri);
       setSelected(null);
     }
-
-  } catch {
-    Alert.alert('Error','Could not pick image');
+  } catch (err) {
+    Alert.alert('Error', 'Could not pick image.');
   }
   };
 
@@ -290,7 +289,7 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
             {filtered.map(a => {
               const isSel = selected === a.id;
               return (
-                <TouchableOpacity key={a.id} onPress={() => setSelected(a.id)} activeOpacity={0.8}
+                <TouchableOpacity key={a.id} onPress={() => {setSelected(a.id); setCustomImage(null);}} activeOpacity={0.8}
                   style={{ width: 72, alignItems: 'center', gap: 4 }}>
                   <View style={{ width: 68, height: 68, borderRadius: 34, overflow: 'hidden', borderWidth: isSel ? 3 : 1.5, borderColor: isSel ? C.blue : C.border }}>
                     <Image source={a.src} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
@@ -314,10 +313,10 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
               <Text style={{ fontSize: 15, fontWeight: '600', color: C.muted }}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleSave} disabled={saving || (!selected && !customImage)} activeOpacity={0.85}
-              style={{ flex: 2, height: 52, borderRadius: 14, backgroundColor: selected ? C.blue : C.border, alignItems: 'center', justifyContent: 'center' }}>
+              style={{ flex: 2, height: 52, borderRadius: 14, backgroundColor: (selected || customImage) ? C.blue : C.border, alignItems: 'center', justifyContent: 'center' }}>
               {saving
                 ? <ActivityIndicator color="#2a2000" size="small" />
-                : <Text style={{ fontSize: 15, fontWeight: '800', color: selected ? '#2a2000' : C.muted }}>Save Avatar ✓</Text>
+                : <Text style={{ fontSize: 15, fontWeight: '800', color: (selected || customImage) ? '#2a2000' : C.muted }}>Save Avatar ✓</Text>
               }
             </TouchableOpacity>
           </View>
