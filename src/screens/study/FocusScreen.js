@@ -409,7 +409,7 @@ export default function FocusScreen({ navigation, route }) {
             }}
           >
             <Text style={{ fontSize: 17, fontWeight: '900', color: '#1a1000', letterSpacing: 0.3 }}>
-              {isPaused ? '▶ Resume' : '⏸ Pause'}
+              {isPaused ? 'Resume' : ' Pause'}
             </Text>
           </LinearGradient>
         </ScalePress>
