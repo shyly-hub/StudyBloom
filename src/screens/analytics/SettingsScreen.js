@@ -218,9 +218,13 @@ export default function SettingsScreen({ navigation }) {
                       // 2️⃣  Reset score + user profile fields on the user doc
                       const userRef = doc(db, 'users', userId);
                       await updateDoc(userRef, {
-                        score:           0,
+                        score: 0,
                         disciplineScore: 0,
-                        education:       null,
+                        streak: 0,           
+                        totalMinutes: 0,      
+                        totalSessions: 0,    
+                        dailyGoal: 120,     
+                        education: null,
                         lastScoreUpdate: serverTimestamp(),
                       });
 

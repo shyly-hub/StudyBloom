@@ -1,22 +1,20 @@
-
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
-import { SafeAreaProvider }    from 'react-native-safe-area-context';
-import { StatusBar }           from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 
 import AuthProvider, { useAuth } from './src/hooks/useAuth';
-import { SessionProvider }       from './src/context/sessionContext';
-import { ThemeProvider, useTheme } from './src/context/ThemeContext';  // ← ADD
-import AuthNavigator             from './src/navigation/authNavigator';
-import MainNavigator             from './src/navigation/mainNavigator';
+import { SessionProvider } from './src/context/sessionContext';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext'; 
+import AuthNavigator from './src/navigation/authNavigator';
+import MainNavigator from './src/navigation/mainNavigator';
 
 // ── Inner navigator — reads auth state ────────────────────────
 function RootNavigator() {
   const { user, userData, loading } = useAuth();
-  const { C, dark }                 = useTheme();   // ← live theme
+  const { C } = useTheme();
 
-  // Spinner while Firebase checks login
   if (loading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: C.bg }}>
@@ -25,14 +23,9 @@ function RootNavigator() {
     );
   }
 
+  // No SessionProvider here anymore
   return user ? (
-    // Session context only needed when logged in
-    <SessionProvider userId={user.uid} initialScore={userData?.score ?? 50}>
-      {user
-        ? <MainNavigator user={user} userData={userData} />
-        : <AuthNavigator />
-      }
-    </SessionProvider>
+    <MainNavigator user={user} userData={userData} />
   ) : (
     <AuthNavigator />
   );
@@ -40,18 +33,19 @@ function RootNavigator() {
 
 // ── Root ────────────────────────────────────────────────────────
 export default function App() {
+  const { user } = useAuth(); // used for SessionProvider
+
   return (
     <SafeAreaProvider>
-      {/* ThemeProvider MUST be here — outside NavigationContainer
-          so every screen can call useTheme() and get live C */}
       <ThemeProvider initialDark={false}>
-        {/* StatusBar reacts to dark mode automatically */}
         <ThemedStatusBar />
 
         <AuthProvider>
-          {/* NavigationContainer at root level — not inside a child */}
           <NavigationContainer>
-            <RootNavigator />
+            {/* SessionProvider moved here so context persists across all screens */}
+            <SessionProvider userId={user?.uid}>
+              <RootNavigator />
+            </SessionProvider>
           </NavigationContainer>
         </AuthProvider>
       </ThemeProvider>
@@ -60,7 +54,6 @@ export default function App() {
 }
 
 // ── StatusBar switches style with dark mode ────────────────────
-// Separate component so it can call useTheme()
 function ThemedStatusBar() {
   const { dark } = useTheme();
   return <StatusBar style={dark ? 'light' : 'dark'} />;

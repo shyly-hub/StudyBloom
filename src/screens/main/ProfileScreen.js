@@ -332,7 +332,7 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
 export default function ProfileScreen({ navigation }) {
   const { C }   = useTheme();
   const { user, userData, logout, updateUserData } = useAuth();
-  const { sessions } = useSession();
+  const { sessions, hours } = useSession();
 
   const [editNameOpen,   setEditNameOpen]   = useState(false);
   const [avatarPickOpen, setAvatarPickOpen] = useState(false);
@@ -353,7 +353,6 @@ export default function ProfileScreen({ navigation }) {
   const avatarId = userData?.avatarId || null;
   const score    = userData?.score    ?? 0;
   const streak   = userData?.streak   ?? 0;
-  const hours    = Math.round(((userData?.totalMinutes || 0) / 60) * 10) / 10;
   const avatarSource = userData?.customAvatar ? { uri: userData.customAvatar }: getAvatarSource(avatarId);
   const { rank, next, pct: rankPct } = getRank(hours);
 
@@ -371,8 +370,8 @@ export default function ProfileScreen({ navigation }) {
       customAvatar: null
     });
   }
+  };
 
-};
   const handleLogout = () => Alert.alert(
     'Log Out', `Sign out of ${email || 'your account'}?`,
     [
@@ -383,6 +382,7 @@ export default function ProfileScreen({ navigation }) {
       }},
     ]
   );
+
 
 const menuSections = [
   {
