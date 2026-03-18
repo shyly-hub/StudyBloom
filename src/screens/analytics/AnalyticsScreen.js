@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { useTheme }   from '../../context/ThemeContext';
 import { useSession } from '../../context/sessionContext';
+import { useAuth }    from '../../hooks/useAuth';
 import { computeMetrics, getValidSessions } from '../../utils/scoreEngine';
 import { SUBJECTS, sColor } from '../../themes';
 
@@ -212,8 +213,16 @@ const DISTRACTION_COLORS = {
 // ══════════════════════════════════════════════════════════════════
 export default function AnalyticsScreen() {
   const { C }  = useTheme();
-  const { sessions, disciplineScore } = useSession();
+  const { sessions, disciplineScore: contextScore } = useSession();
+  const auth       = useAuth?.() || {};
+  const userData   = auth.userData || null;
   const [weekFilter, setWeekFilter]   = useState('This Week');
+
+  // Source of truth: use contextScore (reflects resets instantly via resetScore()),
+  // but fall back to userData.score on first load before any session activity.
+  // Take the minimum so a reset (context→0) always wins over a stale userData value.
+  const persistedScore  = userData?.score ?? userData?.disciplineScore ?? 0;
+  const disciplineScore = Math.min(contextScore, persistedScore === 0 ? contextScore : persistedScore);
 
   // getValidSessions() is the single source of truth — shared with History and Report
   const validSessions  = getValidSessions(sessions);

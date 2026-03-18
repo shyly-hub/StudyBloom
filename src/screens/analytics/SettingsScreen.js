@@ -143,7 +143,7 @@ export default function SettingsScreen({ navigation }) {
   const [eduModal, setEduModal]              = useState(false);
   const [saving,   setSaving]                = useState(false);
   const [resetting, setResetting]            = useState(false);
-  const { resetSessions } = useSession();
+  const { resetSessions, deleteAllSessions, resetScore } = useSession();
 
   const currentEdu = userData?.education || 'Bachelors';
   // Use userData?.uid OR userData?.id OR auth user uid. 
@@ -194,15 +194,27 @@ export default function SettingsScreen({ navigation }) {
                     setResetting(true);
 
                     try {
-                      await resetSessions();
+                      // 1. Clear sessions from Firestore + local state
+                      if (typeof deleteAllSessions === 'function') {
+                        await deleteAllSessions();
+                      } else if (typeof resetSessions === 'function') {
+                        await resetSessions();
+                      }
+
+                      // 2. Reset score in local context immediately (so Analytics shows 0 now)
+                      if (typeof resetScore === 'function') {
+                        resetScore();
+                      }
+
+                      // 3. Persist zeroed fields to Firestore user doc
                       await updateUserData({
-                        score: 0,
+                        score:           0,
                         disciplineScore: 0,
-                        streak: 0,
-                        totalMinutes: 0,
-                        totalSessions: 0,
-                        dailyGoal: 120,
-                        education: null,
+                        streak:          0,
+                        totalMinutes:    0,
+                        totalSessions:   0,
+                        dailyGoal:       120,
+                        education:       null,
                       });
 
                       Alert.alert('Done', 'All your data has been reset.');

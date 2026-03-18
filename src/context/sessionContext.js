@@ -1,6 +1,6 @@
 import React, {
   createContext, useContext, useState,
-  useEffect, useCallback, useRef, useMemo,
+  useEffect, useCallback, useRef,
 } from 'react';
 import {
   collection, query, orderBy,
@@ -11,20 +11,22 @@ import { db } from '../config/firebase';
 
 const SessionContext = createContext(null);
 
+// ── Threshold for score impact only ──────────────────────────
+// History shows EVERY saved session (even 1s).
+// Only sessions >= 60s affect the Discipline Score.
 export const MIN_SCORE_SECONDS = 60;
 
-export function SessionProvider({ children, userId, initialScore = 50 }) {
+export function SessionProvider({ children, userId, initialScore = 0 }) {
   const [sessions,        setSessions]        = useState([]);
   const [disciplineScore, setDisciplineScore] = useState(initialScore);
   const [loading,         setLoading]         = useState(true);
   const unsubRef = useRef(null);
 
+  // ── Real-time Firestore listener ─────────────────────────────
+  // Fires the instant any write lands — History/Analytics/Report
+  // refresh automatically with zero polling or manual re-fetch.
   useEffect(() => {
-    if (!userId) { 
-      setSessions([]);
-      setLoading(false); 
-      return; 
-    }
+    if (!userId) { setLoading(false); return; }
 
     if (unsubRef.current) unsubRef.current();
 
@@ -48,6 +50,8 @@ export function SessionProvider({ children, userId, initialScore = 50 }) {
             : new Date().toISOString(),
         };
       });
+      // Show ALL sessions in context — no minimum threshold here.
+      // Screens decide what to display (History = all, Analytics = >= 60s for scores).
       setSessions(docs);
       setLoading(false);
     }, (err) => {
@@ -58,6 +62,8 @@ export function SessionProvider({ children, userId, initialScore = 50 }) {
     return () => { if (unsubRef.current) unsubRef.current(); };
   }, [userId]);
 
+  // ── addSession — INSTANT local update before snapshot fires ──
+  // No minimum threshold — if it was saved to Firestore, show it.
   const addSession = useCallback((sessionDoc) => {
     setSessions(prev => {
       if (prev.some(s => s.id === sessionDoc.id)) return prev;
@@ -65,6 +71,7 @@ export function SessionProvider({ children, userId, initialScore = 50 }) {
     });
   }, []);
 
+  // ── deleteSession ─────────────────────────────────────────────
   const deleteSession = useCallback(async (sessionId) => {
     if (!userId || !sessionId) return;
     setSessions(prev => prev.filter(s => s.id !== sessionId));
@@ -75,52 +82,45 @@ export function SessionProvider({ children, userId, initialScore = 50 }) {
     }
   }, [userId]);
 
-  const resetSessions = useCallback(async () => {
+  // ── deleteAllSessions — used by Settings > Reset All Data ─────
+  const deleteAllSessions = useCallback(async () => {
     setSessions([]);
     if (!userId) return;
     try {
       const sessionsRef = collection(db, 'users', userId, 'sessions');
       const snapshot    = await getDocs(sessionsRef);
       if (snapshot.empty) return;
-      
-
       for (let i = 0; i < snapshot.docs.length; i += 500) {
         const batch = writeBatch(db);
         snapshot.docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
         await batch.commit();
       }
     } catch (e) {
-      console.warn('resetSessions error:', e);
-      throw e; 
+      console.warn('deleteAllSessions error:', e);
     }
   }, [userId]);
 
-  const hours = useMemo(() => {
-    return Math.round(
-      (sessions.reduce((sum, s) => {
-        const mins = s.minutes || s.duration || (s.durationSeconds ? s.durationSeconds / 60 : 0);
-        return sum + mins;
-      }, 0) / 60) * 10
-    ) / 10;
-  }, [sessions]);
-
+  // ── Update score ──────────────────────────────────────────────
   const updateScore = useCallback((newScore) => {
     setDisciplineScore(Math.min(100, Math.max(0, newScore)));
   }, []);
 
-  const value = {
-    sessions: sessions || [],
-    loading: loading || false,
-    hours: hours || 0,
-    disciplineScore: disciplineScore || 0,
-    addSession: addSession || (() => {}),
-    deleteSession: deleteSession || (async () => {}),
-    resetSessions: resetSessions || (async () => {}), 
-    updateScore: updateScore || (() => {}),
-  };
+  // ── resetScore — called by Settings reset so UI reflects 0 instantly ──
+  const resetScore = useCallback(() => {
+    setDisciplineScore(0);
+  }, []);
 
   return (
-    <SessionContext.Provider value={value}>
+    <SessionContext.Provider value={{
+      sessions,
+      disciplineScore,
+      loading,
+      addSession,
+      deleteSession,
+      deleteAllSessions,
+      updateScore,
+      resetScore,
+    }}>
       {children}
     </SessionContext.Provider>
   );
@@ -128,19 +128,6 @@ export function SessionProvider({ children, userId, initialScore = 50 }) {
 
 export function useSession() {
   const ctx = useContext(SessionContext);
-  
-  if (!ctx) {
-    return {
-      sessions: [],
-      loading: false,
-      hours: 0,
-      disciplineScore: 0,
-      addSession: async () => {},
-      deleteSession: async () => {},
-      resetSessions: async () => {},
-      updateScore: () => {},
-    };
-  }
-  
+  if (!ctx) throw new Error('useSession must be used inside <SessionProvider>');
   return ctx;
 }
