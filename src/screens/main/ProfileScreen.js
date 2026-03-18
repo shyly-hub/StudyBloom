@@ -356,7 +356,8 @@ export default function ProfileScreen({ navigation }) {
   const name     = userData?.name     || user?.displayName || 'Student';
   const email    = userData?.email    || user?.email       || '';
   const score    = userData?.score    ?? 0;
-  const streak   = userData?.streak   ?? 0;
+  // FIX: read streak from live session metrics, not userData (that field is never updated)
+  const streak   = stats?.metrics?.streak ?? userData?.streak ?? 0;
   // Use stats from context — single source of truth shared with Home/Analytics/Report
   const totalMinutes = stats?.totalMinutes ?? userData?.totalMinutes ?? 0;
   const hoursNum     = Math.floor(totalMinutes / 60);

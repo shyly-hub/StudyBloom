@@ -10,7 +10,7 @@ import { useAuth }         from '../../hooks/useAuth';
 import { SUBJECT_ICONS, sColor, sBg } from '../../themes';
 import { Avatar }          from '../../components';
 
-const MIN_SESSIONS = 3;
+const MIN_SESSIONS = 1;
 
 // ── Avatar source ──────────────────────────────────────────────
 function getAvatarSource(avatarId) {
@@ -176,16 +176,14 @@ function generateInsight(sessions = []) {
 
 // ── Focus consistency ──────────────────────────────────────────
 function calcFocusConsistency(sessions) {
+  // Focus Consistency = how often you completed sessions WITHOUT distractions.
+  // This is more meaningful than duration variance which gives false 100%
+  // when sessions happen to be the same length.
+  // Formula: (completed sessions with 0 distractions) / (all completed) * 100
   const completed = sessions.filter(s => s.completed);
-  if (completed.length < 5) return 0;
-  const durations = completed.map(s =>
-    s.durationSeconds != null ? Math.floor(s.durationSeconds / 60) : (s.duration ?? 0));
-  const mean = durations.reduce((a, b) => a + b, 0) / durations.length;
-  if (mean === 0) return 0;
-  const variance = durations.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / durations.length;
-  const stdDev   = Math.sqrt(variance);
-  const cv       = (stdDev / mean) * 100;
-  return Math.min(100, Math.max(0, Math.round(100 - cv * 2)));
+  if (completed.length < 2) return 0;
+  const cleanSessions = completed.filter(s => !s.distractions?.length);
+  return Math.round((cleanSessions.length / completed.length) * 100);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -615,12 +613,12 @@ export default function WeeklyReportScreen() {
               <CircleGauge value={focusConsistency} color={C.purple} label={'Focus\nConsistency'} C={C} size={82} />
               <CircleGauge value={noDistractionPct} color={C.yellow} label={'Zero\nDistraction'}  C={C} size={82} />
             </View>
-            {focusConsistency === 0 && (
+            {focusConsistency === 0 && completedCount < 2 && (
               <View style={{ marginTop: 16, backgroundColor: C.bgRaised, borderRadius: 12, padding: 12 }}>
                 <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 16 }}>
                   📊 Complete{' '}
                   <Text style={{ fontWeight: '700', color: C.text }}>
-                    {Math.max(0, 5 - completedCount)} more session{completedCount < 4 ? 's' : ''}
+                    {Math.max(0, 2 - completedCount)} more completed session{2 - completedCount !== 1 ? 's' : ''}
                   </Text>
                   {' '}to unlock Focus Consistency
                 </Text>

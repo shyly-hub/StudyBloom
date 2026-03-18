@@ -240,8 +240,9 @@ export default function HomeScreen({ navigation }) {
   const userData              = auth.userData || null;
 
   const name      = userData?.name    || user?.displayName || 'Student';
-  // const score     = userData?.score   ?? userData?.disciplineScore ?? 0;
-  const streak    = userData?.streak  ?? 0;
+  const score     = userData?.score   ?? userData?.disciplineScore ?? 0;
+  // FIX: read streak from live session metrics, not userData (that field is never updated)
+  const streak    = stats?.metrics?.streak ?? userData?.streak ?? 0;
   const dailyGoal = userData?.dailyGoal ?? 120;
   const avatarId  = userData?.avatarId  || null;
   const customAvatar = userData?.customAvatar || null;

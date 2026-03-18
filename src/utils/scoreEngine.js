@@ -143,15 +143,26 @@ function defaultMetrics() {
 
 function computeStreak(sessions) {
   if (!sessions.length) return 0;
-  const dates = [...new Set(
-    sessions.filter(s => s.date).map(s => new Date(s.date).toDateString())
-  )].sort((a, b) => new Date(b) - new Date(a));
-  if (!dates.length) return 0;
-  let streak = 0;
-  let cursor = new Date(); cursor.setHours(0, 0, 0, 0);
-  for (const dateStr of dates) {
-    const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
-    if (Math.round((cursor - d) / 86400000) <= 1) { streak++; cursor = d; }
+
+  // Normalise each session date to midnight, deduplicate, sort newest first
+  const timestamps = [...new Set(
+    sessions
+      .filter(s => s.date)
+      .map(s => { const d = new Date(s.date); d.setHours(0,0,0,0); return d.getTime(); })
+  )].sort((a, b) => b - a);
+
+  if (!timestamps.length) return 0;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffFromToday = Math.round((today.getTime() - timestamps[0]) / 86400000);
+
+  // Most recent session day must be today or yesterday to have an active streak
+  if (diffFromToday > 1) return 0;
+
+  let streak = 1;
+  for (let i = 1; i < timestamps.length; i++) {
+    const diff = Math.round((timestamps[i - 1] - timestamps[i]) / 86400000);
+    if (diff === 1) streak++;
     else break;
   }
   return streak;
