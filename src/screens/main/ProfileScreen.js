@@ -332,10 +332,15 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
 export default function ProfileScreen({ navigation }) {
   const { C }   = useTheme();
   const { user, userData, logout, updateUserData } = useAuth();
-  const { sessions, hours } = useSession();
+  const { sessions, resetSessions } = useSession();
 
   const [editNameOpen,   setEditNameOpen]   = useState(false);
   const [avatarPickOpen, setAvatarPickOpen] = useState(false);
+
+  const avatarId     = userData?.avatarId  || null;
+  const customAvatar = userData?.customAvatar || null;
+  const avatarSource = customAvatar ? { uri: customAvatar } : getAvatarSource(avatarId);
+  const { rank, next, pct: rankPct } = getRank(hours);
 
   // Animated gradient
   const gradAnim = useRef(new Animated.Value(0)).current;
@@ -350,13 +355,44 @@ export default function ProfileScreen({ navigation }) {
 
   const name     = userData?.name     || user?.displayName || 'Student';
   const email    = userData?.email    || user?.email       || '';
-  const avatarId = userData?.avatarId || null;
   const score    = userData?.score    ?? 0;
   const streak   = userData?.streak   ?? 0;
-  const avatarSource = userData?.customAvatar ? { uri: userData.customAvatar }: getAvatarSource(avatarId);
-  const { rank, next, pct: rankPct } = getRank(hours);
-
+  const totalMinutes = userData?.totalMinutes ?? 0;
+  const hours = Math.round((totalMinutes / 60) * 10) / 10;
   const handleSaveName   = async (newName)     => { await updateUserData({ name: newName }); };
+
+  const handleResetData = () => {
+  Alert.alert(
+    "Reset Data",
+    "This will clear all your stats and sessions. Continue?",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Reset",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await resetSessions();
+
+            await updateUserData({
+              score: 0,
+              streak: 0,
+              totalMinutes: 0,
+              totalSessions: 0,
+              dailyGoal: 120,
+            });
+
+            Alert.alert("Done", "Your data has been reset.");
+          } catch (err) {
+            console.log(err);
+            Alert.alert("Error", "Failed to reset data.");
+          }
+        },
+      },
+    ]
+  );
+  };
+
   const handleSaveAvatar = async ({ selected, customImage }) => {
     if(customImage){
       await updateUserData({
@@ -384,7 +420,7 @@ export default function ProfileScreen({ navigation }) {
   );
 
 
-const menuSections = [
+  const menuSections = [
   {
     title: 'Identity',
     items: [

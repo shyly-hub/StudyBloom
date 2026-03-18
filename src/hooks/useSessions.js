@@ -11,6 +11,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { useAuth } from '../hooks/useAuth';
 
 // ── Hook to manage sessions ──
 export function useSessions(userId) {
@@ -36,13 +37,13 @@ export function useSessions(userId) {
       setSessions(data);
     } catch (err) {
       console.log('Fetch error:', err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const addSession = async (sessionData) => {
     if (!userId) return;
-
     const newSession = {
       ...sessionData,
       userId,
@@ -59,25 +60,17 @@ export function useSessions(userId) {
   };
 
   const deleteSession = async (sessionId) => {
-  if (!userId) {
-    console.warn('No userId');
-    return;
-  }
-
-  try {
-    await deleteDoc(doc(db, 'users', userId, 'sessions', sessionId));
-
-    setSessions(prev => prev.filter(s => s.id !== sessionId));
-  } catch (e) {
-    console.error('Delete failed:', e);
-  }
+    if (!userId) return;
+    try {
+      await deleteDoc(doc(db, 'sessions', sessionId));
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+    } catch (e) {
+      console.error('Delete failed:', e);
+    }
   };
-
-  const hours = Math.round(((sessions.reduce((sum, s) => sum + (s.minutes || 0), 0)) / 60) * 10) / 10;
 
   const resetSessions = async () => {
     if (!userId) return;
-
     try {
       const q = query(collection(db, 'sessions'), where('userId', '==', userId));
       const snap = await getDocs(q);
@@ -86,9 +79,13 @@ export function useSessions(userId) {
       setSessions([]);
       console.log('Sessions reset');
     } catch (err) {
-      console.log('Reset sessions error:', err);
+      console.error('Reset sessions error:', err);
     }
   };
+
+  const hours = Math.round(
+    (sessions.reduce((sum, s) => sum + (s.minutes || 0), 0) / 60) * 10
+  ) / 10;
 
   return {
     sessions,
@@ -101,10 +98,12 @@ export function useSessions(userId) {
   };
 }
 
-// ── Context & Provider ──
+// Context & Provider
 const SessionContext = createContext();
 
-export const SessionProvider = ({ userId, children }) => {
+export const SessionProvider = ({ children }) => {
+  const { userData } = useAuth();
+  const userId = userData?.uid ?? null;
   const sessionHook = useSessions(userId);
 
   return (

@@ -8,10 +8,6 @@ import { Feather }        from "@expo/vector-icons";
 import { useTheme }       from "../../context/ThemeContext";
 import { useAuth }        from "../../hooks/useAuth";
 import { useSession }     from "../../context/sessionContext";
-import { db }             from "../../config/firebase";
-import {
-  collection, getDocs, writeBatch, doc, updateDoc, serverTimestamp,
-} from "firebase/firestore";
 
 const EDU_LEVELS = [
   'High School',
@@ -143,14 +139,16 @@ function EduPickerModal({ visible, current, onSelect, onClose, C }) {
 // ══════════════════════════════════════════
 export default function SettingsScreen({ navigation }) {
   const { C, dark }                          = useTheme();
-  const { logout, userData, updateUserData } = useAuth();
-  const { deleteAllSessions }                = useSession?.() || {};
+  const { logout, userData, updateUserData } = useAuth(); // Make sure updateUserData is destructured
   const [eduModal, setEduModal]              = useState(false);
   const [saving,   setSaving]                = useState(false);
   const [resetting, setResetting]            = useState(false);
+  const { resetSessions } = useSession();
 
   const currentEdu = userData?.education || 'Bachelors';
-  const userId     = userData?.uid || userData?.id || null;
+  // Use userData?.uid OR userData?.id OR auth user uid. 
+  // NOTE: Since we use updateUserData, we don't strictly need userId here, but keeping it for safety if needed elsewhere.
+  const userId     = userData?.uid || userData?.id || null; 
 
   const handleEduSave = async (level) => {
     setSaving(true);
@@ -174,7 +172,6 @@ export default function SettingsScreen({ navigation }) {
   const handleBugReport = () => {
     Linking.openURL('mailto:support@studybloom.app?subject=Bug%20Report&body=Describe%20the%20issue%20here...');
   };
-
   const handleResetData = () => {
     Alert.alert(
       'Reset All Data',
@@ -182,7 +179,8 @@ export default function SettingsScreen({ navigation }) {
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset', style: 'destructive',
+          text: 'Reset',
+          style: 'destructive',
           onPress: () => {
             Alert.alert(
               'Are you absolutely sure?',
@@ -190,53 +188,27 @@ export default function SettingsScreen({ navigation }) {
               [
                 { text: 'Cancel', style: 'cancel' },
                 {
-                  text: 'Yes, Delete Everything', style: 'destructive',
+                  text: 'Yes, Delete Everything',
+                  style: 'destructive',
                   onPress: async () => {
-                    if (!userId) {
-                      Alert.alert('Error', 'Could not identify user. Please sign out and back in.');
-                      return;
-                    }
                     setResetting(true);
-                    try {
-                      // 1️⃣  Delete every document in the sessions subcollection
-                      const sessionsRef  = collection(db, 'users', userId, 'sessions');
-                      const snapshot     = await getDocs(sessionsRef);
-                      if (!snapshot.empty) {
-                        // writeBatch handles up to 500 deletes at once; chunk if needed
-                        const chunks = [];
-                        const docs   = snapshot.docs;
-                        for (let i = 0; i < docs.length; i += 500) {
-                          chunks.push(docs.slice(i, i + 500));
-                        }
-                        for (const chunk of chunks) {
-                          const batch = writeBatch(db);
-                          chunk.forEach(d => batch.delete(d.ref));
-                          await batch.commit();
-                        }
-                      }
 
-                      // 2️⃣  Reset score + user profile fields on the user doc
-                      const userRef = doc(db, 'users', userId);
-                      await updateDoc(userRef, {
+                    try {
+                      await resetSessions();
+                      await updateUserData({
                         score: 0,
                         disciplineScore: 0,
-                        streak: 0,           
-                        totalMinutes: 0,      
-                        totalSessions: 0,    
-                        dailyGoal: 120,     
+                        streak: 0,
+                        totalMinutes: 0,
+                        totalSessions: 0,
+                        dailyGoal: 120,
                         education: null,
-                        lastScoreUpdate: serverTimestamp(),
                       });
-
-                      // 3️⃣  Clear sessions in local context so UI updates instantly
-                      if (typeof deleteAllSessions === 'function') {
-                        await deleteAllSessions();
-                      }
 
                       Alert.alert('Done', 'All your data has been reset.');
                     } catch (e) {
                       console.error('Reset error:', e);
-                      Alert.alert('Error', 'Failed to reset data. Please try again.');
+                      Alert.alert('Error', 'Failed to reset data.');
                     } finally {
                       setResetting(false);
                     }
@@ -348,13 +320,13 @@ export default function SettingsScreen({ navigation }) {
             C={C}
           />
           <Row
-  icon="info"
-  label="About"
-  sub="Version 1.0.1 · Built by Team Girlies"
-  onPress={() => navigation.navigate('About')}
-  C={C}
-  isLast
-/>
+            icon="info"
+            label="About"
+            sub="Version 1.0.1 · Built by Team Girlies"
+            onPress={() => navigation.navigate('About')}
+            C={C}
+            isLast
+          />
         </Card>
 
         {/* ── ACCOUNT ACTIONS ── */}
