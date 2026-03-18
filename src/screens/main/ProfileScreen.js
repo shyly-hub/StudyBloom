@@ -472,12 +472,12 @@ export default function ProfileScreen({ navigation }) {
         <View style={{ position: 'absolute', bottom: -30, left: -10, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.10)' }} />
 
         {/* Back button */}
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={{ position: 'absolute', top: 60, left: 20, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' }}
         >
           <Text style={{ fontSize: 20, color: '#fff', fontWeight: '600' }}>‹</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Avatar */}
         <TouchableOpacity onPress={() => setAvatarPickOpen(true)} activeOpacity={0.85} style={{ marginBottom: 14, position: 'relative' }}>

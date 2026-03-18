@@ -240,7 +240,7 @@ export default function HomeScreen({ navigation }) {
   const userData              = auth.userData || null;
 
   const name      = userData?.name    || user?.displayName || 'Student';
-  const score     = userData?.score   ?? userData?.disciplineScore ?? 0;
+  // const score     = userData?.score   ?? userData?.disciplineScore ?? 0;
   const streak    = userData?.streak  ?? 0;
   const dailyGoal = userData?.dailyGoal ?? 120;
   const avatarId  = userData?.avatarId  || null;
@@ -318,7 +318,7 @@ export default function HomeScreen({ navigation }) {
       </View>
 
       {/* ── Score card ── */}
-      <View style={{
+      {/* <View style={{
         marginHorizontal: 20, marginTop: 16, marginBottom: 16,
         backgroundColor: C.blue, borderRadius: 22, padding: 20, overflow: 'hidden',
         shadowColor: 'rgba(245,200,66,0.4)', shadowOffset: { width: 0, height: 6 },
@@ -342,7 +342,7 @@ export default function HomeScreen({ navigation }) {
         <View style={{ height: 7, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 4, overflow: 'hidden' }}>
           <View style={{ width: `${progressPct * 100}%`, height: '100%', backgroundColor: '#fff', borderRadius: 4 }} />
         </View>
-      </View>
+      </View> */}
 
       {/* ── Bento stats grid ── */}
       <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
