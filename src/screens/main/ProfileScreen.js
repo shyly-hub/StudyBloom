@@ -332,7 +332,7 @@ function AvatarPickerModal({ visible, current, onSave, onClose, C }) {
 export default function ProfileScreen({ navigation }) {
   const { C }   = useTheme();
   const { user, userData, logout, updateUserData } = useAuth();
-  const { sessions, resetSessions } = useSession();
+  const { sessions, resetSessions, stats } = useSession();
 
   const [editNameOpen,   setEditNameOpen]   = useState(false);
   const [avatarPickOpen, setAvatarPickOpen] = useState(false);
@@ -357,8 +357,18 @@ export default function ProfileScreen({ navigation }) {
   const email    = userData?.email    || user?.email       || '';
   const score    = userData?.score    ?? 0;
   const streak   = userData?.streak   ?? 0;
-  const totalMinutes = userData?.totalMinutes ?? 0;
-  const hours = Math.round((totalMinutes / 60) * 10) / 10;
+  // Use stats from context — single source of truth shared with Home/Analytics/Report
+  const totalMinutes = stats?.totalMinutes ?? userData?.totalMinutes ?? 0;
+  const hoursNum     = Math.floor(totalMinutes / 60);
+  const minsNum      = totalMinutes % 60;
+  // For getRank() — pass total hours as a decimal (same logic as before)
+  const hours        = totalMinutes / 60;
+  // Display label: "1h 23m" if >= 1h, else "45m"
+  const hoursLabel   = totalMinutes < 60
+    ? `${totalMinutes}m`
+    : minsNum > 0
+    ? `${hoursNum}h ${minsNum}m`
+    : `${hoursNum}h`;
   const handleSaveName   = async (newName)     => { await updateUserData({ name: newName }); };
 
   const handleResetData = () => {
@@ -537,7 +547,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10 }}>
           <View style={{ flex: 1, backgroundColor: C.card, borderRadius: 24, padding: 16, borderWidth: 1, borderColor: C.border, alignItems: 'center', shadowColor: C.shadow, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 1, shadowRadius: 8, elevation: 3 }}>
             <Text style={{ fontSize: 22, marginBottom: 4 }}>⏱</Text>
-            <CountUp value={hours} style={{ fontSize: 26, fontWeight: '800', color: C.mint }} suffix="h" />
+            <Text style={{ fontSize: totalMinutes < 60 ? 26 : 20, fontWeight: '800', color: C.mint, letterSpacing: -0.5 }}>{hoursLabel}</Text>
             <Text style={{ fontSize: 10, color: C.muted, fontWeight: '600', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>Hours</Text>
           </View>
 

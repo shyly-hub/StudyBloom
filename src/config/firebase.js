@@ -1,5 +1,9 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getFirestore }                   from 'firebase/firestore';
+import {
+  initializeFirestore,
+  getFirestore,
+  persistentLocalCache,
+} from 'firebase/firestore';
 import {
   initializeAuth,
   getAuth,
@@ -21,6 +25,7 @@ const app = getApps().length === 0
   ? initializeApp(firebaseConfig)
   : getApp();
 
+// Auth — same guard as before
 let auth;
 try {
   auth = initializeAuth(app, {
@@ -30,6 +35,16 @@ try {
   auth = getAuth(app);
 }
 
-export const db = getFirestore(app);
-export { auth };
+// Firestore — same guard pattern: try initializeFirestore, fall back to getFirestore
+// This prevents the "already called with different options" error on hot reload
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache(),
+  });
+} catch {
+  db = getFirestore(app);
+}
+
+export { db, auth };
 export default app;

@@ -9,7 +9,6 @@ import { useSession }      from '../../context/sessionContext';
 import { useAuth }         from '../../hooks/useAuth';
 import { SUBJECT_ICONS, sColor, sBg } from '../../themes';
 import { Avatar }          from '../../components';
-import { getValidSessions } from '../../utils/scoreEngine';
 
 const MIN_SESSIONS = 3;
 
@@ -194,11 +193,10 @@ function calcFocusConsistency(sessions) {
 // ══════════════════════════════════════════════════════════════════
 export default function WeeklyReportScreen() {
   const { C, dark }                                        = useTheme();
-  const { sessions: rawSessions, loading: sessionsLoading } = useSession();
+  const { sessions: rawSessions, stats, loading: sessionsLoading } = useSession();
   const auth                                       = useAuth?.() || {};
   const userData                                   = auth.userData || null;
 
-  // Guard against undefined sessions
   const sessions = rawSessions || [];
 
   const name         = userData?.name || 'Student';
@@ -209,9 +207,11 @@ export default function WeeklyReportScreen() {
   const weekNumber   = Math.ceil(new Date().getDate() / 7);
   const monthName    = new Date().toLocaleString('default', { month: 'long' });
 
-  // Every saved session counts toward unlocking the report and populating metrics.
-  const allSessions   = sessions;
-  const validSessions = useMemo(() => getValidSessions(sessions), [sessions]);
+  // Use stats from context — single source of truth
+  // totalCount = all sessions (gate for unlock bar)
+  // totalMinutes = shared with Home/Profile progress bars
+  const allSessions = sessions;
+  const { totalCount, totalMinutes: sharedTotalMins } = stats;
 
   const insight          = useMemo(() => generateInsight(allSessions), [allSessions]);
   const completedCount   = allSessions.filter(s => s.completed).length;
@@ -227,11 +227,9 @@ export default function WeeklyReportScreen() {
     return g;
   }, [allSessions]);
 
-  // CRITICAL: don't evaluate the gate until Firestore has responded.
-  // On Android the snapshot can take 300–800ms; without this guard the screen
-  // flashes "0/3 locked" even when the user has plenty of sessions.
-  const sessionsRemaining = Math.max(0, MIN_SESSIONS - allSessions.length);
-  const hasEnoughData     = !sessionsLoading && allSessions.length >= MIN_SESSIONS;
+  // Unlock gate uses totalCount (same as History screen counts)
+  const sessionsRemaining = Math.max(0, MIN_SESSIONS - totalCount);
+  const hasEnoughData     = !sessionsLoading && totalCount >= MIN_SESSIONS;
 
   // FIX: RECS inside useMemo so C values are always current
   const RECS = useMemo(() => [
@@ -270,10 +268,10 @@ export default function WeeklyReportScreen() {
         style={{ paddingTop: 28, paddingBottom: 32, paddingHorizontal: 20, marginBottom: -16 }}
       >
         <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 4 }}>
-          {/* Week {weekNumber} · {monthName} */}
+          Week {weekNumber} · {monthName}
         </Text>
         <Text style={{ fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: -0.8 }}>
-          Bloom Report
+          Weekly Report
         </Text>
       </LinearGradient>
 
@@ -346,7 +344,7 @@ export default function WeeklyReportScreen() {
                   color:         '#10B981',
                   marginBottom:  6,
                 }}>
-                  🌱 Growth Insights
+                  🌱 MIRRORMIND CALIBRATING
                 </Text>
                 <Text style={{
                   fontSize:      20,
@@ -397,14 +395,14 @@ export default function WeeklyReportScreen() {
               <View style={{ width: '100%', marginBottom: 14 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                   <Text style={{ fontSize: 11, color: C.muted, fontWeight: '600' }}>
-                    {allSessions.length} / {MIN_SESSIONS} sessions
+                    {totalCount} / {MIN_SESSIONS} sessions
                   </Text>
                   <Text style={{
                     fontSize:   11,
                     fontWeight: '800',
-                    color:      allSessions.length > 0 ? '#10B981' : C.muted,
+                    color:      totalCount > 0 ? '#10B981' : C.muted,
                   }}>
-                    {Math.round((allSessions.length / MIN_SESSIONS) * 100)}%
+                    {Math.round((totalCount / MIN_SESSIONS) * 100)}%
                   </Text>
                 </View>
                 {/* Track */}
@@ -414,12 +412,12 @@ export default function WeeklyReportScreen() {
                   borderRadius:    4,
                   overflow:        'hidden',
                 }}>
-                  {allSessions.length > 0 && (
+                  {totalCount > 0 && (
                     <LinearGradient
                       colors={['#10B981', '#34D399']}
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       style={{
-                        width:        `${Math.min((allSessions.length / MIN_SESSIONS) * 100, 100)}%`,
+                        width:        `${Math.min((totalCount / MIN_SESSIONS) * 100, 100)}%`,
                         height:       '100%',
                         borderRadius: 4,
                         ...Platform.select({
@@ -440,7 +438,7 @@ export default function WeeklyReportScreen() {
                 color:      '#10B981',
                 textAlign:  'center',
               }}>
-                {sessionsRemaining === 0 ? 'Unlocking...' : `🌱 ${sessionsRemaining} more to go`}
+                {sessionsRemaining === 0 ? '🌸 Unlocking...' : `🌱 ${sessionsRemaining} more to go`}
               </Text>
             </View>
           </View>
@@ -514,7 +512,7 @@ export default function WeeklyReportScreen() {
                   </Text>
                 </View>
                 {/* Fix 3: flower bud replaces lock icon */}
-                <Text style={{ fontSize: 14, flexShrink: 0, opacity: 0.5 }}></Text>
+                <Text style={{ fontSize: 14, flexShrink: 0, opacity: 0.5 }}>🌸</Text>
               </View>
             ))}
           </View>
@@ -597,7 +595,7 @@ export default function WeeklyReportScreen() {
             <View style={{ flexDirection: 'row', justifyContent: 'space-around', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 16 }}>
               {[
                 { val: `${completePct}%`,                                                    lbl: 'Completion' },
-                { val: `${Math.floor(insight.totalMins / 60)}h ${insight.totalMins % 60}m`, lbl: 'Focus Time' },
+                { val: sharedTotalMins < 60 ? `${sharedTotalMins}m` : `${Math.floor(sharedTotalMins / 60)}h ${sharedTotalMins % 60}m`, lbl: 'Focus Time' },
                 { val: `${score}/100`,                                                       lbl: 'Score'      },
               ].map(s => (
                 <View key={s.lbl} style={{ alignItems: 'center' }}>

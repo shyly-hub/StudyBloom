@@ -1,12 +1,13 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View, Text, ScrollView,
   TouchableOpacity, TextInput, Alert, Animated, Platform,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme }       from '../../context/ThemeContext';
 import { useSession }     from '../../context/sessionContext';
-import { getValidSessions, MIN_VALID_SECONDS } from '../../utils/scoreEngine';
+import { MIN_VALID_SECONDS } from '../../utils/scoreEngine';
 import { sColor, sBg, SUBJECT_ICONS } from '../../themes';
 
 const FILTERS = ['All', 'Done', 'Quit'];
@@ -37,23 +38,22 @@ function formatDate(d) {
   } catch { return ''; }
 }
 
-// ── Subject bg — soft pastel matching Home screen subject buttons (Fix 5) ──
+// ── Subject bg — soft pastel matching Home screen subject buttons ──
 function subjectBg(subject) {
-  // Returns the same soft tinted backgrounds as the Home screen subject pills
   const map = {
-    Math:     'rgba(167,139,250,0.18)',   // soft purple   — matches Home
-    Science:  'rgba(52,211,153,0.15)',    // soft green
-    English:  'rgba(96,165,250,0.15)',    // soft blue
-    History:  'rgba(251,191,36,0.18)',    // soft amber
-    Physics:  'rgba(248,113,113,0.15)',   // soft red
-    Chemistry:'rgba(34,211,238,0.15)',    // soft cyan
-    Biology:  'rgba(74,222,128,0.15)',    // soft emerald
-    Other:    'rgba(148,163,184,0.15)',   // soft grey
+    Math:      'rgba(167,139,250,0.18)',
+    Science:   'rgba(52,211,153,0.15)',
+    English:   'rgba(96,165,250,0.15)',
+    History:   'rgba(251,191,36,0.18)',
+    Physics:   'rgba(248,113,113,0.15)',
+    Chemistry: 'rgba(34,211,238,0.15)',
+    Biology:   'rgba(74,222,128,0.15)',
+    Other:     'rgba(148,163,184,0.15)',
   };
   return map[subject] || sBg(subject) || 'rgba(148,163,184,0.15)';
 }
 
-// ── Session Card — Fix 2: only Icon, Name, Time, Status ──
+// ── Session Card ──────────────────────────
 function SessionCard({ session, onDelete, C }) {
   const { subject, completed } = session;
   const icon        = SUBJECT_ICONS?.[subject] || '📌';
@@ -75,59 +75,36 @@ function SessionCard({ session, onDelete, C }) {
 
   return (
     <View style={{
-      backgroundColor: C.card,
-      borderRadius:    18,
-      marginBottom:    8,
-      flexDirection:   'row',
-      alignItems:      'center',
-      paddingVertical: 13,
+      backgroundColor:   C.card,
+      borderRadius:      18,
+      marginBottom:      8,
+      flexDirection:     'row',
+      alignItems:        'center',
+      paddingVertical:   13,
       paddingHorizontal: 14,
-      borderWidth:     1,
-      borderColor:     C.border,
-      opacity:         isShort ? 0.72 : 1,
+      borderWidth:       1,
+      borderColor:       C.border,
+      opacity:           isShort ? 0.72 : 1,
       ...Platform.select({
         ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6 },
         android: { elevation: 1 },
       }),
     }}>
-      {/* Fix 5: soft purple (or subject-matched) icon bubble */}
-      <View style={{
-        width:           42,
-        height:          42,
-        borderRadius:    14,
-        backgroundColor: subjectBg(subject),
-        alignItems:      'center',
-        justifyContent:  'center',
-        marginRight:     12,
-        flexShrink:      0,
-      }}>
+      <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: subjectBg(subject), alignItems: 'center', justifyContent: 'center', marginRight: 12, flexShrink: 0 }}>
         <Text style={{ fontSize: 20 }}>{icon}</Text>
       </View>
-
-      {/* Name + time */}
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 14, fontWeight: '700', color: C.text, letterSpacing: -0.2 }}>{subject}</Text>
         <Text style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>{durLabel}</Text>
       </View>
-
-      {/* Status pill — Done / Quit only (Fix 2: no NO SCORE badge) */}
       <View style={{
-        paddingVertical:   5,
-        paddingHorizontal: 12,
-        borderRadius:      20,
-        backgroundColor:   isShort
-          ? 'transparent'
-          : completed
-          ? 'rgba(16,185,129,0.10)'
-          : 'rgba(248,113,113,0.10)',
-        marginRight:       10,
+        paddingVertical: 5, paddingHorizontal: 12, borderRadius: 20, marginRight: 10,
+        backgroundColor: isShort ? 'transparent' : completed ? 'rgba(16,185,129,0.10)' : 'rgba(248,113,113,0.10)',
       }}>
         <Text style={{ fontSize: 11, fontWeight: '700', color: accentColor }}>
           {isShort ? '< 1m' : completed ? 'Done' : 'Quit'}
         </Text>
       </View>
-
-      {/* Delete */}
       <TouchableOpacity onPress={handleDelete} hitSlop={8}>
         <Text style={{ fontSize: 16, color: C.muted, opacity: 0.5 }}>✕</Text>
       </TouchableOpacity>
@@ -140,22 +117,25 @@ function DateHeader({ label, count, C }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8, marginTop: 8 }}>
       <Text style={{ fontSize: 10, fontWeight: '800', color: C.muted, letterSpacing: 1, textTransform: 'uppercase' }}>{label}</Text>
-      <View style={{ flex: 1, height: StyleSheet_hairline, backgroundColor: C.border }} />
+      <View style={{ flex: 1, height: 1, backgroundColor: C.border }} />
       <Text style={{ fontSize: 10, fontWeight: '600', color: C.muted }}>{count}</Text>
     </View>
   );
 }
 
-const StyleSheet_hairline = 1;
-
 // ══════════════════════════════════════════
 //  MAIN
 // ══════════════════════════════════════════
 export default function HistoryScreen() {
-  const { C }                       = useTheme();
-  const { sessions, deleteSession } = useSession();
-  const [filter, setFilter]         = useState('All');
-  const [search, setSearch]         = useState('');
+  const { C }                                      = useTheme();
+  const { sessions, stats, deleteSession }         = useSession();
+  const [filter, setFilter]                        = useState('All');
+  const [search, setSearch]                        = useState('');
+
+  // Re-clear search every time the History tab is focused
+  useFocusEffect(useCallback(() => {
+    setSearch('');
+  }, []));
 
   const filtered = useMemo(() => {
     let list = [...sessions];
@@ -175,13 +155,13 @@ export default function HistoryScreen() {
     return groups;
   }, [filtered]);
 
-  const validSessions = useMemo(() => getValidSessions(sessions), [sessions]);
-  const shortCount    = sessions.length - validSessions.length;
+  // Single source of truth from context — no independent calculation
+  const { totalCount, shortCount } = stats;
 
   const filterCount = (f) =>
-    f === 'All' ? sessions.length :
+    f === 'All'  ? sessions.length :
     f === 'Done' ? sessions.filter(s => s.completed).length :
-    sessions.filter(s => !s.completed).length;
+                   sessions.filter(s => !s.completed).length;
 
   return (
     <ScrollView
@@ -189,46 +169,27 @@ export default function HistoryScreen() {
       contentContainerStyle={{ paddingBottom: 110 }}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Fix 1: Pastel mesh gradient header — dark charcoal title ── */}
+      {/* Header gradient */}
       <LinearGradient
         colors={['#FAD7A0', '#ABEBC6', '#D7BDE2', '#AED6F1']}
         locations={[0, 0.35, 0.7, 1]}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={{ paddingTop: 56, paddingHorizontal: 20, paddingBottom: 32 }}
       >
-        <Text style={{
-          fontSize:      10,
-          fontWeight:    '800',
-          color:         'rgba(44,44,44,0.55)',
-          letterSpacing: 2.5,
-          textTransform: 'uppercase',
-          marginBottom:  4,
-        }}>
+        <Text style={{ fontSize: 10, fontWeight: '800', color: 'rgba(44,44,44,0.55)', letterSpacing: 2.5, textTransform: 'uppercase', marginBottom: 4 }}>
           Your study sessions
         </Text>
-        <Text style={{
-          fontSize:      32,
-          fontWeight:    '900',
-          color:         '#1C1917',
-          letterSpacing: -1,
-          lineHeight:    36,
-        }}>
+        <Text style={{ fontSize: 32, fontWeight: '900', color: '#1C1917', letterSpacing: -1, lineHeight: 36 }}>
           History
         </Text>
       </LinearGradient>
 
-      {/* ── Sessions count card — floats over gradient ── */}
+      {/* Sessions count card */}
       <View style={{ paddingHorizontal: 16, marginTop: -20, marginBottom: 18 }}>
         <View style={{
-          backgroundColor:   C.card,
-          borderRadius:      18,
-          paddingVertical:   16,
-          paddingHorizontal: 18,
-          flexDirection:     'row',
-          alignItems:        'center',
-          gap:               12,
-          borderWidth:       1,
-          borderColor:       C.border,
+          backgroundColor: C.card, borderRadius: 18, paddingVertical: 16,
+          paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center',
+          gap: 12, borderWidth: 1, borderColor: C.border,
           ...Platform.select({
             ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.06, shadowRadius: 10 },
             android: { elevation: 3 },
@@ -236,7 +197,7 @@ export default function HistoryScreen() {
         }}>
           <Text style={{ fontSize: 24 }}>📚</Text>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 24, fontWeight: '900', color: C.blue, letterSpacing: -0.8 }}>{sessions.length}</Text>
+            <Text style={{ fontSize: 24, fontWeight: '900', color: C.blue, letterSpacing: -0.8 }}>{totalCount}</Text>
             <Text style={{ fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.2, textTransform: 'uppercase' }}>Total Sessions</Text>
           </View>
         </View>
@@ -244,18 +205,11 @@ export default function HistoryScreen() {
 
       <View style={{ paddingHorizontal: 16 }}>
 
-        {/* ── Search bar ── */}
+        {/* Search bar */}
         <View style={{
-          flexDirection:     'row',
-          alignItems:        'center',
-          backgroundColor:   C.card,
-          borderRadius:      16,
-          paddingHorizontal: 14,
-          height:            48,
-          marginBottom:      12,
-          borderWidth:       1,
-          borderColor:       C.border,
-          gap:               8,
+          flexDirection: 'row', alignItems: 'center', backgroundColor: C.card,
+          borderRadius: 16, paddingHorizontal: 14, height: 48, marginBottom: 12,
+          borderWidth: 1, borderColor: C.border, gap: 8,
           ...Platform.select({
             ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6 },
             android: { elevation: 1 },
@@ -278,57 +232,72 @@ export default function HistoryScreen() {
           )}
         </View>
 
-        {/* ── Fix 3: Capsule filters — white bg, 1px border, soft yellow active ── */}
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+        {/* Filter tabs — individual capsule buttons */}
+        <View style={{
+          flexDirection:  'row',
+          gap:            8,
+          marginBottom:   20,
+          alignItems:     'center',
+        }}>
           {FILTERS.map(f => {
             const active = filter === f;
             const count  = filterCount(f);
             return (
-              <ScalePress key={f} onPress={() => setFilter(f)} style={{ flex: 1 }}>
+              <ScalePress key={f} onPress={() => setFilter(f)}>
                 <View style={{
                   flexDirection:     'row',
                   alignItems:        'center',
-                  justifyContent:    'center',
-                  gap:               8,
-                  paddingVertical:   16,
-                  paddingHorizontal: 12,
-                  borderRadius:      50,
-                  minHeight:         56,
-                  backgroundColor:   active ? '#FEF3C7' : C.card,
-                  borderWidth:       1.5,
-                  borderColor:       active ? '#F59E0B' : C.border,
+                  gap:               5,
+                  paddingHorizontal: 18,
+                  paddingVertical:   8,
+                  borderRadius:      20,
+                  backgroundColor:   active ? '#EAB308' : C.card,
+                  borderWidth:       1,
+                  borderColor:       active ? '#EAB308' : C.border,
                   ...Platform.select({
-                    ios:     { shadowColor: active ? '#F59E0B' : '#000', shadowOffset: { width: 0, height: active ? 4 : 1 }, shadowOpacity: active ? 0.2 : 0.04, shadowRadius: active ? 8 : 4 },
-                    android: { elevation: active ? 3 : 1 },
+                    ios: {
+                      shadowColor:   active ? '#EAB308' : '#000',
+                      shadowOffset:  { width: 0, height: active ? 3 : 1 },
+                      shadowOpacity: active ? 0.22 : 0.05,
+                      shadowRadius:  active ? 8 : 4,
+                    },
+                    android: { elevation: active ? 4 : 1 },
                   }),
                 }}>
                   <Text style={{
-                    fontSize:      15,
-                    fontWeight:    active ? '800' : '600',
-                    color:         active ? '#92400E' : C.text,
-                    letterSpacing: -0.2,
+                    fontSize:      13,
+                    fontWeight:    active ? '700' : '500',
+                    color:         active ? '#1a1000' : C.muted,
+                    letterSpacing: -0.1,
                   }}>
                     {f}
                   </Text>
-                  <View style={{
-                    backgroundColor:   active ? '#F59E0B' : C.bgRaised,
-                    borderRadius:      12,
-                    paddingHorizontal: 8,
-                    paddingVertical:   3,
-                    minWidth:          24,
-                    alignItems:        'center',
-                  }}>
-                    <Text style={{ fontSize: 11, fontWeight: '800', color: active ? '#fff' : C.muted }}>
-                      {count}
-                    </Text>
-                  </View>
+                  {count > 0 && (
+                    <View style={{
+                      backgroundColor: active ? 'rgba(0,0,0,0.12)' : C.bgRaised,
+                      borderRadius:    10,
+                      minWidth:        18,
+                      height:          18,
+                      alignItems:      'center',
+                      justifyContent:  'center',
+                      paddingHorizontal: 4,
+                    }}>
+                      <Text style={{
+                        fontSize:   10,
+                        fontWeight: '700',
+                        color:      active ? '#1a1000' : C.muted,
+                      }}>
+                        {count}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </ScalePress>
             );
           })}
         </View>
 
-        {/* ── Session list ── */}
+        {/* Session list */}
         {Object.keys(grouped).length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: 56, gap: 10 }}>
             <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.bgRaised, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border }}>
@@ -354,16 +323,9 @@ export default function HistoryScreen() {
           ))
         )}
 
-        {/* ── Fix 4: Short-session note as subtle footer ── */}
+        {/* Short-session footer note */}
         {shortCount > 0 && (
-          <Text style={{
-            fontSize:      11,
-            color:         C.muted,
-            textAlign:     'center',
-            opacity:       0.6,
-            marginTop:     16,
-            lineHeight:    17,
-          }}>
+          <Text style={{ fontSize: 11, color: C.muted, textAlign: 'center', opacity: 0.6, marginTop: 16, lineHeight: 17 }}>
             {shortCount} session{shortCount > 1 ? 's' : ''} under 1 min are saved but don't affect scores.
           </Text>
         )}

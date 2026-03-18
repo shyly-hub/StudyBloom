@@ -9,7 +9,6 @@ import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import AuthNavigator from './src/navigation/authNavigator';
 import MainNavigator from './src/navigation/mainNavigator';
 
-// ── Root navigator that reads auth state
 function RootNavigator() {
   const { user, userData, loading } = useAuth();
   const { C } = useTheme();
@@ -29,17 +28,21 @@ function RootNavigator() {
   );
 }
 
-// ── Root App
 export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider initialDark={false}>
         <AuthProvider>
-          <NavigationContainer>
-            <SessionProvider>
+          {/*
+            SessionProvider is now INSIDE AuthProvider.
+            It reads userId from AuthContext internally — no prop needed.
+            It will automatically re-subscribe to Firestore when auth resolves.
+          */}
+          <SessionProvider>
+            <NavigationContainer>
               <RootNavigator />
-            </SessionProvider>
-          </NavigationContainer>
+            </NavigationContainer>
+          </SessionProvider>
         </AuthProvider>
         <ThemedStatusBar />
       </ThemeProvider>
@@ -47,7 +50,6 @@ export default function App() {
   );
 }
 
-// ── StatusBar switches style with dark mode
 function ThemedStatusBar() {
   const { dark } = useTheme();
   return <StatusBar style={dark ? 'light' : 'dark'} />;

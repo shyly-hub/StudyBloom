@@ -235,7 +235,7 @@ function RecentWidget({ sessions, navigation, C }) {
 export default function HomeScreen({ navigation }) {
   const { C }                 = useTheme();
   const auth                  = useAuth?.() || {};
-  const { sessions, loading } = useSession();
+  const { sessions, loading, stats } = useSession();
   const user                  = auth.user     || null;
   const userData              = auth.userData || null;
 
@@ -269,7 +269,17 @@ export default function HomeScreen({ navigation }) {
 
   const todayMins   = Math.floor(todaySeconds / 60);
   const progressPct = Math.min(1, todayMins / dailyGoal);
-  const hours       = Math.round(((userData?.totalMinutes || 0) / 60) * 10) / 10;
+
+  // Use stats from context — single source of truth shared across all screens
+  const totalMins   = stats?.totalMinutes ?? userData?.totalMinutes ?? 0;
+  const hoursNum    = Math.floor(totalMins / 60);
+  const minsNum     = totalMins % 60;
+  // Display: "1h 23m" if >= 1h, else "45m"
+  const hoursLabel  = totalMins < 60
+    ? `${totalMins}m`
+    : minsNum > 0
+    ? `${hoursNum}h ${minsNum}m`
+    : `${hoursNum}h`;
 
   const handleStartFocus = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -349,7 +359,7 @@ export default function HomeScreen({ navigation }) {
           <View style={[bentoCard, { flex: 1, padding: 16, alignItems: 'center', justifyContent: 'center' }]}>
             <Text style={{ fontSize: 11, color: C.muted, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Sessions</Text>
             <Text style={{ fontSize: 32, fontWeight: '900', color: C.purple, letterSpacing: -1 }}>
-              {userData?.totalSessions || sessions.length || 0}
+              {stats?.totalCount ?? userData?.totalSessions ?? sessions.length ?? 0}
             </Text>
           </View>
         </View>
@@ -357,7 +367,7 @@ export default function HomeScreen({ navigation }) {
           {/* Hours */}
           <View style={[bentoCard, { flex: 1, padding: 16, alignItems: 'center' }]}>
             <Text style={{ fontSize: 22, marginBottom: 4 }}>⏱</Text>
-            <Text style={{ fontSize: 22, fontWeight: '800', color: C.peach }}>{hours}h</Text>
+            <Text style={{ fontSize: totalMins < 60 ? 22 : 18, fontWeight: '800', color: C.peach, letterSpacing: -0.5 }}>{hoursLabel}</Text>
             <Text style={{ fontSize: 10, color: C.muted, fontWeight: '600', marginTop: 2 }}>Hours</Text>
           </View>
           {/* Completion */}

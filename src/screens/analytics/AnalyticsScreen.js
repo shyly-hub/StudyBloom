@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import Svg, { Circle, G, Path } from 'react-native-svg';
 import { useTheme }   from '../../context/ThemeContext';
 import { useSession } from '../../context/sessionContext';
 import { useAuth }    from '../../hooks/useAuth';
-import { computeMetrics, getValidSessions } from '../../utils/scoreEngine';
 import { SUBJECTS, sColor } from '../../themes';
 
 const { width } = Dimensions.get('window');
@@ -213,23 +213,26 @@ const DISTRACTION_COLORS = {
 // ══════════════════════════════════════════════════════════════════
 export default function AnalyticsScreen() {
   const { C }  = useTheme();
-  const { sessions, disciplineScore: contextScore } = useSession();
+  const { sessions, stats, disciplineScore: contextScore } = useSession();
   const auth       = useAuth?.() || {};
   const userData   = auth.userData || null;
-  const [weekFilter, setWeekFilter]   = useState('This Week');
+  const [weekFilter, setWeekFilter] = useState('This Week');
 
-  // Source of truth: use contextScore (reflects resets instantly via resetScore()),
-  // but fall back to userData.score on first load before any session activity.
-  // Take the minimum so a reset (context→0) always wins over a stale userData value.
+  // useFocusEffect: force week filter reset so chart always shows current week on tab focus
+  useFocusEffect(useCallback(() => {
+    setWeekFilter('This Week');
+  }, []));
+
+  // Score: take the minimum so a resetScore() (context→0) always wins
   const persistedScore  = userData?.score ?? userData?.disciplineScore ?? 0;
-  const disciplineScore = Math.min(contextScore, persistedScore === 0 ? contextScore : persistedScore);
+  const disciplineScore = contextScore === 0 ? 0 : Math.min(contextScore, persistedScore || contextScore);
 
-  // getValidSessions() is the single source of truth — shared with History and Report
-  const validSessions  = getValidSessions(sessions);
-  const metrics        = computeMetrics(sessions);
-  const totalMins      = metrics.totalMinutes;
-  // Weekly bar chart uses validSessions only (durationSeconds >= 60)
-  const weeklyData     = getWeeklyData(validSessions);
+  // All derived values come from stats — no independent calculation
+  const { metrics, totalMinutesValid: totalMins, validCount } = stats;
+
+  // Weekly bar chart still needs session-level data for per-day breakdown
+  const validSessions = sessions.filter(s => (s.durationSeconds ?? (s.duration || 0) * 60) >= 60);
+  const weeklyData    = getWeeklyData(validSessions);
 
   const donutData = metrics.distractionBreakdown
     .slice(0, 6)
@@ -301,7 +304,7 @@ export default function AnalyticsScreen() {
               : `${(totalMins / 60).toFixed(1)}h`,
             color: C.blue,
           },
-          { label: 'Sessions',    value: metrics.validSessions,            color: C.green  },
+          { label: 'Sessions',    value: validCount,                   color: C.green  },
           { label: 'Completed',   value: metrics.completedSessions,        color: C.purple },
         ].map(s => (
           <View key={s.label} style={[card, { flex: 1, alignItems: 'center', padding: 14, marginBottom: 0 }]}>
